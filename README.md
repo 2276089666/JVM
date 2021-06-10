@@ -250,7 +250,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 ## 5.对象头信息(markword)
 
-![image-20210606164640042](jvm.assets/image-20210606164640042.png)
+![image-20210606164640042](README.assets/image-20210606164640042.png)
 
 ## 6.垃圾确认算法
 
@@ -306,9 +306,9 @@ GC Roots包括:
 
 ##   8.对象在各分区内存分配
 
-![image-20210608142604428](jvm.assets/image-20210608142604428.png)
+![image-20210608142604428](README.assets/image-20210608142604428.png)
 
-![image-20210608160936478](jvm.assets/image-20210608160936478.png)
+![image-20210608160936478](README.assets/image-20210608160936478.png)
 
 ### 8.1方法区
 
@@ -329,14 +329,95 @@ hotspot指的是热点代码探测技术
 
 ## 10.JVM整体详细模型
 
-![image-20210609210427969](jvm.assets/image-20210609210427969.png)
+![image-20210609210427969](README.assets/image-20210609210427969.png)
 
-## 11.类加载过程
+## 11.类加载子系统
 
-### 11.1大致过程
+### 11.1类加载大致过程
 
-![image-20210609211559937](jvm.assets/image-20210609211559937.png)
+![image-20210609211559937](README.assets/image-20210609211559937.png)
 
-### 11.2类加载的三大步骤
+### 11.2类加载的几大步骤
 
-![image-20210609212456023](jvm.assets/image-20210609212456023.png)
+![image-20210609212456023](README.assets/image-20210609212456023.png)
+
+注意:初始化的阶段,一个类只能<clinit>()一次,多个线程的情况下会被同步加锁
+
+[示例代码](src\main\java\com\jvm\clinit\TestSyncClinit.java)
+
+### 11.3类加载器的种类
+
+![image-20210610161031760](README.assets/image-20210610161031760.png)
+
+#### 11.3.1引导类加载器
+
+> Bootstrap Class Loader,使用C,C++编写,用于加载String等java核心类库,我们用户无法使用,只加载包名为java,javax,sun开头的类
+
+#### 11.3.2自定义类加载器
+
+> 继承于java定义的ClassLoader虚基类的子类都为自定义类加载器
+>
+> 1. 扩展类加载器,ExtClassLoader,从java.ext.dirs系统属性所指定的目录中加载类库
+> 2. 系统类加载器,默认是AppClassLoader,自己写的类的默认加载器
+
+[代码链接](src\main\java\com\jvm\classLoader\TestClassLoader.java)
+
+自定义类加载器步骤
+
+![image-20210610160804269](README.assets/image-20210610160804269.png)
+
+[代码链接](src\main\java\com\jvm\classLoader\CustomClassLoader.java)
+
+## 12.双亲委派机制
+
+![image-20210610163108846](README.assets/image-20210610163108846.png)
+
+[验证代码](src\main\java\com\jvm\parentAppoint\StringTest.java)
+
+[验证代码](src\main\java\java\lang\String.java)
+
+![image-20210610164022595](README.assets/image-20210610164022595.png)
+
+好处:
+
+![image-20210610164110362](README.assets/image-20210610164110362.png)
+
+[验证代码](src\main\java\java\lang\Test.java)
+
+### 12.1JVM中两个类是否为同一个类
+
+>条件:
+>
+>1. 包名,类名一样
+>2. 类加载器一样
+
+## 13.运行时数据区(Runtime Data Areas )
+
+![image-20210610190058265](README.assets/image-20210610190058265.png)
+
+![image-20210610190128432](README.assets/image-20210610190128432.png)
+
+### 13.1.PC寄存器
+
+>作用:用来存储下一条指令的地址(==线程私有==)
+
+```
+pc寄存器存储字节码指令地址作用:
+	答:cpu会不断的切换各个线程,切换回来就得知道接着从哪开始执行,pc寄存器里面放的地址就是
+```
+
+### 13.2.虚拟机栈
+
+>what : 每个线程创建时都会创建一个虚拟机栈,其内部保存一个个的栈帧,对应者一次次的java方法的调用,一个栈帧对应一个Java方法(==线程私有==)
+>
+>作用: 保存==方法的局部变量,部分结果,参与方法的调用和返回==
+
+[StackOverflowError](src\main\java\com\jvm\oom\TestStackOverflowError.java)
+
+[StackOutOfMemory](src\main\java\com\jvm\oom\TestStackOutOfMemory.java)
+
+![image-20210610201153860](README.assets/image-20210610201153860.png)
+
+### 13.3.栈帧的内部结构
+
+![image-20210610221601228](README.assets/image-20210610221601228.png)
