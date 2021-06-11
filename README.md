@@ -242,7 +242,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
    上面的参数用java -XX:+PrintCommandLineFlags -version 观察虚拟机的配置
 
-   ![image-20210606134921811](jvm.assets/image-20210606134921811.png)
+   ![image-20210606134921811](README.assets/image-20210606134921811.png)
 
 **数组对象**(new int[]{} 16字节)
 
