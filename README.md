@@ -343,7 +343,7 @@ hotspot指的是热点代码探测技术
 
 注意:初始化的阶段,一个类只能<clinit>()一次,多个线程的情况下会被同步加锁
 
-[示例代码](src\main\java\com\jvm\clinit\TestSyncClinit.java)
+[示例代码](src/main/java/com/jvm/clinit/TestSyncClinit.java)
 
 ### 11.3.类加载器的种类
 
@@ -360,21 +360,21 @@ hotspot指的是热点代码探测技术
 > 1. 扩展类加载器,ExtClassLoader,从java.ext.dirs系统属性所指定的目录中加载类库
 > 2. 系统类加载器,默认是AppClassLoader,自己写的类的默认加载器
 
-[代码链接](src\main\java\com\jvm\classLoader\TestClassLoader.java)
+[代码链接](src/main/java/com/jvm/classLoader/TestClassLoader.java)
 
 自定义类加载器步骤
 
 ![image-20210610160804269](README.assets/image-20210610160804269.png)
 
-[代码链接](src\main\java\com\jvm\classLoader\CustomClassLoader.java)
+[代码链接](src/main/java/com/jvm/classLoader/CustomClassLoader.java)
 
 ## 12.双亲委派机制
 
 ![image-20210610163108846](README.assets/image-20210610163108846.png)
 
-[验证代码](src\main\java\com\jvm\parentAppoint\StringTest.java)
+[验证代码](src/main/java/com/jvm/parentAppoint/StringTest.java)
 
-[验证代码](src\main\java\java\lang\String.java)
+[验证代码](src/main/java/java/lang/String.java)
 
 ![image-20210610164022595](README.assets/image-20210610164022595.png)
 
@@ -382,7 +382,7 @@ hotspot指的是热点代码探测技术
 
 ![image-20210610164110362](README.assets/image-20210610164110362.png)
 
-[验证代码](src\main\java\java\lang\Test.java)
+[验证代码](src/main/java/java/lang/Test.java)
 
 ### 12.1.JVM中两个类是否为同一个类
 
