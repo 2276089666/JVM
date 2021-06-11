@@ -2,7 +2,7 @@
 
 ## 1.ClassFileFormat
 
-### 1.1编译字节码
+### 1.1.编译字节码
 
 使用sublime打开我们的 TestClass.class文件
 
@@ -35,7 +35,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 11
 ```
 
-### 1.2分析字节码
+### 1.2.分析字节码
 
 1. 使用Javap -verbose TestClass.class 编译出字节码内容
 
@@ -105,9 +105,9 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 2. 使用idea插件打开
 
-### 1.3class文件的结构
+### 1.3.class文件的结构
 
-#### 1.31基本的数据类型:
+#### 1.31.基本的数据类型:
 
 1. 无符号数
 
@@ -117,7 +117,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 2. "_info"结尾的表
 
-#### 1.32十六进制的字节码分别代表:
+#### 1.32.十六进制的字节码分别代表:
 
 1. 魔数(Magic Number) 4字节
 2. 版本号(Major Version) 4字节  ->52.0  次版本号(.0)+主版本号(52)
@@ -127,7 +127,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 ## 2.JMM
 
-### 2.1一致性
+### 2.1.一致性
 
 - MESI协议
 
@@ -139,7 +139,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 - 总线锁
 
-### 2.2乱序
+### 2.2.乱序
 
 - 硬件
 
@@ -178,7 +178,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 > 在Load2及后续所有读取操作执行前，保证Store1的写入对所有处理器可见。
 > ```
 
-### 2.3volatile的实现细节
+### 2.3.volatile的实现细节
 
 1. 字节码层面
    ACC_VOLATILE
@@ -203,7 +203,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
    hsdis - HotSpot Dis Assembler
    windows lock 指令实现 | MESI实现
 
-### 2.4synchronized实现细节
+### 2.4.synchronized实现细节
 
 1. 字节码层面
    ACC_SYNCHRONIZED
@@ -254,7 +254,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 ## 6.垃圾确认算法
 
-### 6.1Reference Counting(引用计数算法) 
+### 6.1.Reference Counting(引用计数算法) 
 
 >在对象中添加一个引用计数器,每当有一个地方引用它,计数器值就加一,当引用失效时,计数器的值就减一.任何时刻计数器为零的对象就是垃圾
 
@@ -262,7 +262,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 缺点:循环引用对象无法被确认为垃圾
 ```
 
-### 6.2Root Seraching(可达性分析算法)
+### 6.2.Root Seraching(可达性分析算法)
 
 >通过一系列的"GC Roots"的根对象作为起始节点集,从这些节点开始,根据引用关系向下搜索,搜索过程所走的路径称为"引用链"(Reference Chain),如果某个对象到GC Roots间没有任何引用链相连,则这个对象是垃圾
 
@@ -277,7 +277,7 @@ GC Roots包括:
 
 ## 7.垃圾回收算法
 
-### 7.1标记-清除算法
+### 7.1.标记-清除算法
 
 >标记所有需要回收的对象,标记完成后,统一回收所有被标记的对象,当然,也可以标记不需要回收的对象,标记完成后,统一回收没有被标记的对象
 
@@ -286,7 +286,7 @@ GC Roots包括:
 缺点:需要两边扫描,效率偏低,容易产生碎片
 ```
 
-### 7.2标记-复制算法
+### 7.2.标记-复制算法
 
 >将内存分为大小相等的两块,每次只使用其中的一块,当这一块的内存用完了,就将还存活着的对象复制到另一块没有用的内存块上,然后回收使用过的这块内存的对象
 
@@ -295,7 +295,7 @@ GC Roots包括:
 缺点:内存减半空间浪费,移动复制对象,需要调整对象的引用
 ```
 
-### 7.3标记-整理算法
+### 7.3.标记-整理算法
 
 >让所有存活的对象都向内存空间的一端移动,然后回收边界以外另一端的内存
 
@@ -310,7 +310,7 @@ GC Roots包括:
 
 ![image-20210608160936478](README.assets/image-20210608160936478.png)
 
-### 8.1方法区
+### 8.1.方法区
 
 >JVM ==规范== : 方法区包括:(==Class信息,常量池,静态变量,即时编译的代码缓存==)
 >
@@ -333,11 +333,11 @@ hotspot指的是热点代码探测技术
 
 ## 11.类加载子系统
 
-### 11.1类加载大致过程
+### 11.1.类加载大致过程
 
 ![image-20210609211559937](README.assets/image-20210609211559937.png)
 
-### 11.2类加载的几大步骤
+### 11.2.类加载的几大步骤
 
 ![image-20210609212456023](README.assets/image-20210609212456023.png)
 
@@ -345,15 +345,15 @@ hotspot指的是热点代码探测技术
 
 [示例代码](src\main\java\com\jvm\clinit\TestSyncClinit.java)
 
-### 11.3类加载器的种类
+### 11.3.类加载器的种类
 
 ![image-20210610161031760](README.assets/image-20210610161031760.png)
 
-#### 11.3.1引导类加载器
+#### 11.3.1.引导类加载器
 
 > Bootstrap Class Loader,使用C,C++编写,用于加载String等java核心类库,我们用户无法使用,只加载包名为java,javax,sun开头的类
 
-#### 11.3.2自定义类加载器
+#### 11.3.2.自定义类加载器
 
 > 继承于java定义的ClassLoader虚基类的子类都为自定义类加载器
 >
@@ -384,7 +384,7 @@ hotspot指的是热点代码探测技术
 
 [验证代码](src\main\java\java\lang\Test.java)
 
-### 12.1JVM中两个类是否为同一个类
+### 12.1.JVM中两个类是否为同一个类
 
 >条件:
 >
@@ -421,3 +421,124 @@ pc寄存器存储字节码指令地址作用:
 ### 13.3.栈帧的内部结构
 
 ![image-20210610221601228](README.assets/image-20210610221601228.png)
+
+#### 13.3.1.局部变量表
+
+>数字数组,存储==方法参数==,和==定义在方法体内的局部变量==,以及==返回值类型==
+
+![image-20210611102944454](README.assets/image-20210611102944454.png)
+
+##### 13.3.1.1.变量槽(Slot)
+
+>局部变量表就是用slot组成的数组,4个字节,long和double占2个slot,其他均只占一个
+
+**slot重复利用**
+
+![image-20210611105453758](README.assets/image-20210611105453758.png)
+
+![image-20210611105922559](README.assets/image-20210611105922559.png)
+
+[测试代码](src\main\java\com\jvm\SlotTest.java)
+
+#### 13.3.2.操作数栈
+
+![image-20210611112112152](README.assets/image-20210611112112152.png)
+
+一个操作数栈的单位为4字节,8字节的数据占两个单位
+
+#### 13.3.3.一个栈帧运行过程
+
+1. 源代码和字节码
+
+   ![image-20210611125757790](README.assets/image-20210611125757790.png)
+
+2. 执行引擎执行
+
+   ![image-20210611125858744](README.assets/image-20210611125858744.png)
+
+![image-20210611125950036](README.assets/image-20210611125950036.png)
+
+![image-20210611130056372](README.assets/image-20210611130056372.png)
+
+![image-20210611130201739](README.assets/image-20210611130201739.png)
+
+#### 13.3.4.动态链接
+
+>指向运行时常量池的方法引用 
+>
+>![image-20210611134740427](README.assets/image-20210611134740427.png)
+
+![image-20210611135103490](README.assets/image-20210611135103490.png)
+
+#### 13.3.5.静态和动态链接
+
+> 静态链接:目标方法在编译期间就可知,且运行期间保持不变,这种情况下,将调用方法的符号引用转换为直接引用就叫静态链接
+>
+> invokestatic, invokespecial, 
+
+>动态链接:被调用的方法在编译期间无法确定,只有在运行期间将调用方法的符号引用转换为直接引用(多态)
+>
+>invokevirtual,invokeinterface
+
+![image-20210611152821699](README.assets/image-20210611152821699.png)
+
+[测试代码](src\main\java\com\jvm\Invoke\Son.java)
+
+#### 13.3.6.invokedynamic指令
+
+invokedynamic对于动态语言的支持,让java有了动态语言的特性,主要体现lambda
+
+![image-20210611154955336](README.assets/image-20210611154955336.png)
+
+[测试代码](src\main\java\com\jvm\Invoke\Lambda.java)
+
+#### 13.3.7.方法重写的本质
+
+> 1. 找到操作数栈顶的第一个元素所执行的对象的实际类型，记作C。
+> 2. 如果在类型C中找到与常量中的描述符号简单名称都相符的方法，则进行访问权限校验，如果通过则返回这个方法的直接引用，查找过程结束；如果不通过，则返回java.lang.IllegalAccessError异常。
+> 3. 否则，按照继承关系从下往上依次对C的各个父类进行第2步的搜索和验证过程。
+> 4. 如果始终没有找到合适的方法，则抛出java.lang.AbstractMethodError异常。
+
+IllegalAccessError：
+
+程序试图访问或修改一个属性或调用一个方法，这个属性或方法，你没有权限访问。一般的这个会引擎编译器异常，这个错误如果发生在运行时，就说明一个类发生了不兼容的改变。
+
+==为了提高效率,jvm在类加载的init阶段会预处理,创建一个虚方法表,存放各个方法的实际入口==
+
+#### 13.3.8.方法返回地址
+
+>正常退出,返回主调方法的PC计数器的值
+>
+>异常退出,不返回任何值(交给异常处理表确定)
+
+对于有返回值的return指令不一样
+
+[测试代码](src\main\java\com\jvm\returns\ReturnAddressTest.java)
+
+主调方法在接到被调方法返回的PC计数器的值4,==但是5是什么时候压入到m2的操作数栈顶书上没说明白==
+
+![image-20210611173404437](README.assets/image-20210611173404437.png)
+
+#### 13.3.9.附加信息
+
+>可能带有调试,性能收集信息
+
+### 13.4本地方法栈
+
+>专为本地方法native服务,其他和虚拟机栈一样,hotspot将本地方法栈和虚拟机栈合二为一,虚拟机栈直接可以调native方法
+
+### 13.5.堆
+
+![image-20210611213247010](README.assets/image-20210611213247010.png)
+
+[默认占物理内存大小代码](src\main\java\com\jvm\heap\HeapSpaceInitial.java)
+
+#### 13.5.1各类OOM
+
+1. [堆空间OOM](src\main\java\com\jvm\oom\TestHeapOOM.java)
+2. [栈空间OOM](src\main\java\com\jvm\oom\TestStackOutOfMemory.java)
+3. [栈溢出](src\main\java\com\jvm\oom\TestStackOverflowError.java)
+4. [字符串常量池OOM](src\main\java\com\jvm\oom\StringConstantPoolOOM.java)
+5. [元空间OOM](src\main\java\com\jvm\oom\MetaspaceOOM.java)
+6. [直接内存OOM](src\main\java\com\jvm\oom\DirectMemoryOOM.java)
+
