@@ -286,7 +286,7 @@ GC Roots包括:
 缺点:需要两边扫描,效率偏低,容易产生碎片
 ```
 
-### 7.2.标记-复制算法
+### 7.2.标记-复制算法(年轻代,默认内存划分9:1)
 
 >将内存分为大小相等的两块,每次只使用其中的一块,当这一块的内存用完了,就将还存活着的对象复制到另一块没有用的内存块上,然后回收使用过的这块内存的对象
 
@@ -295,7 +295,7 @@ GC Roots包括:
 缺点:内存减半空间浪费,移动复制对象,需要调整对象的引用
 ```
 
-### 7.3.标记-整理算法
+### 7.3.标记-整理算法(老年代)
 
 >让所有存活的对象都向内存空间的一端移动,然后回收边界以外另一端的内存
 
@@ -308,7 +308,7 @@ GC Roots包括:
 
 ![image-20210608142604428](README.assets/image-20210608142604428.png)
 
-![image-20210608160936478](README.assets/image-20210608160936478.png)
+
 
 ### 8.1.方法区
 
@@ -542,3 +542,41 @@ IllegalAccessError：
 5. [元空间OOM](src/main/java/com/jvm/oom/MetaspaceOOM.java)
 6. [直接内存OOM](src/main/java/com/jvm/oom/DirectMemoryOOM.java)
 
+#### 13.5.2.堆的分代比例设置
+
+>在没有显式的设置`-XX:SurvivorRatio`=8的时候发现Eden:Survivor0=6,官方说开启了-XX:+UseAdaptiveSizePolicy自适应大小调整
+>
+>官方原话:
+>
+>如果禁用了自适应大小调整（使用该`-XX:-UseAdaptiveSizePolicy`选项），`-XX:SurvivorRatio`则应使用该选项为整个应用程序执行设置幸存者空间的大小。
+
+[代码](src/main/java/com/jvm/memorySize/EdenSurvivorTest.java)
+
+#### 13.5.3.对象在内存中的分配过程
+
+![image-20210608160936478](README.assets/image-20210608160936478.png)
+
+#### 13.5.3.几种GC
+
+1. 部分收集
+
+   1. 只回收年轻代 (Minor GC / YGC) : 当Eden区满触发,Survivor区满不会触发Minor GC
+   2. 只回收老年代(Major GC / Old GC) : ==CMS收集器独有==
+   3. 新生代+部分老年代(Mixed GC) : ==G1收集器独有==
+
+2. 整堆收集(Full Gc)
+
+   >触发条件: 
+   >
+   >1. 老年代满
+   >2. 方法区满
+   >3. 调用System.gc() 
+   >4. Minor GC 导致survivor装不下,触发空间分配担保,但是失败了:==老年代连续空间小于新生代对象总大小==或==老年代连续空间小于====历次晋升的平均大====小==
+
+#### 13.5.4.GC日志查看
+
+[测试代码](src/main/java/com/jvm/gc/GcLog.java)
+
+![GC日志详解](README.assets/GC%E6%97%A5%E5%BF%97%E8%AF%A6%E8%A7%A3.png)
+
+![image-20210612205324033](README.assets/image-20210612205324033.png)
