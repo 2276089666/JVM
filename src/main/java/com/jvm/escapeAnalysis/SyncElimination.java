@@ -6,40 +6,43 @@ package com.jvm.escapeAnalysis;
  */
 
 /**
- *  -XX:+EliminateLocks
+ * -XX:+EliminateLocks
  */
+// 花费的时间都差不多,只是前面一个因为预热问题耗时长一点
 public class SyncElimination {
-    static class A {
-        int b = 10;
+    // 默认使用线程不安全的StringBuilder
+    public static String concatString(String s1, String s2, String s3) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(s1);  // append无同步
+        stringBuilder.append(s2);
+        stringBuilder.append(s3);
+        return stringBuilder.toString();
     }
-    static Object lock;
-    static A a = new A();
-    public static void main(String[] args) throws InterruptedException {
-        long start = System.currentTimeMillis();
-        Thread t1 = new Thread(() -> {
-            Object lock = new Object();
-            synchronized (lock) {
-                for (int i = 0; i < 1000000; i++) {
-                    a.b = i;
-                }
-            }
-        });
-        t1.start();
-        t1.join();
-        System.out.println("同步消除花费的时间:\t" + (System.currentTimeMillis() - start));
+
+    public static String concatString2(String s1, String s2, String s3) {
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(s1);  // append有同步
+        stringBuffer.append(s2);
+        stringBuffer.append(s3);
+        return stringBuffer.toString();  // 会新创建一个String对象,避免方法逃逸,会有同步消除
+    }
+
+
+    public static void main(String[] args) {
+        SyncElimination sy = new SyncElimination();
+
+        long start1 = System.currentTimeMillis();
+        for (int i = 0; i < 100000; i++) {
+            sy.concatString(String.valueOf(i - 1), String.valueOf(i), String.valueOf(i + 1));
+        }
+        System.out.println("无同步消耗时间" + (System.currentTimeMillis() - start1));
 
 
         long start2 = System.currentTimeMillis();
-        Thread t2 = new Thread(() -> {
-            lock = new Object();  //线程逃逸,同步无法消除
-            synchronized (lock) {
-                for (int i = 0; i < 1000000; i++) {
-                    a.b = i;
-                }
-            }
-        });
-        t2.start();
-        t2.join();
-        System.out.println("非同步消除花费的时间:\t" + (System.currentTimeMillis() - start2));
+        for (int i = 0; i < 100000; i++) {
+            sy.concatString2(String.valueOf(i - 1), String.valueOf(i), String.valueOf(i + 1));
+        }
+        System.out.println("同步消除消耗时间" + (System.currentTimeMillis() - start2));
+
     }
 }
