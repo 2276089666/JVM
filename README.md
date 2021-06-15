@@ -705,3 +705,35 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 [解释器与编译器性能代码测试](src/main/java/com/jvm/IntCompTest.java)
 
+## 15.字符串常量池（StringTable）
+
+### 15.1.String的不可变性
+
+[测试代码](src/main/java/com/jvm/string/StringTest1.java)
+
+[面试题](src/main/java/com/jvm/string/StringExer.java)
+
+### 15.2.String常量池的字符串不重复原理
+
+![image-20210615205750428](C:\Users\22760\AppData\Roaming\Typora\typora-user-images\image-20210615205750428.png)
+
+[测试代码](src/main/java/com/jvm/string/StringTest2.java)
+
+### 15.3.字符串的拼接
+
+>1. 常量与常量拼接结果在常量池，原理：编译期优化
+>
+>   .java文件：
+>
+>   ![image-20210615212837675](C:\Users\22760\AppData\Roaming\Typora\typora-user-images\image-20210615212837675.png)
+>
+>   .class文件
+>
+>   ![image-20210615213012493](C:\Users\22760\AppData\Roaming\Typora\typora-user-images\image-20210615213012493.png)
+>
+>2. 拼接操作，只要有一个是变量，结果就在堆中。（StringBuilder）
+>
+>   ![image-20210615213418063](C:\Users\22760\AppData\Roaming\Typora\typora-user-images\image-20210615213418063.png)
+>
+>3. 
+
