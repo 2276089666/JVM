@@ -1,8 +1,7 @@
 package java.lang;
 
 /**
- * @author shkstart
- * @create 2020 上午 11:40
+ * 双亲委派机制,导致bootstrapClassLoader加载了系统类库String,我们自定义的String没加载,好处:防止核心api被篡改和类的重复加载
  */
 
 public class String {

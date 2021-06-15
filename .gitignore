@@ -3,3 +3,4 @@
 .idea
 jvm.iml
 *.hprof
+*.txt
