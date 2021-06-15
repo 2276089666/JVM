@@ -715,7 +715,7 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 ### 15.2.String常量池的字符串不重复原理
 
-![image-20210615205750428](C:\Users\22760\AppData\Roaming\Typora\typora-user-images\image-20210615205750428.png)
+![image-20210615205750428](README.assets/image-20210615205750428.png)
 
 [测试代码](src/main/java/com/jvm/string/StringTest2.java)
 
@@ -725,17 +725,17 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 >
 >   .java文件：
 >
->   ![image-20210615212837675](E:\JVM\README.assets\image-20210615212837675.png)
+>   ![image-20210615212837675](README.assets/image-20210615212837675.png)
 >
 >   .class文件
 >
->   ![image-20210615213012493](E:\JVM\README.assets\image-20210615213012493.png)
+>   ![image-20210615213012493](README.assets/image-20210615213012493.png)
 >
 >   
 >
 >2. 拼接操作，只要有一个是变量，结果就在堆中。（StringBuilder）
 >
->   ![image-20210615213418063](E:\JVM\README.assets\image-20210615213418063.png)
+>   ![image-20210615213418063](README.assets/image-20210615213418063.png)
 >
 >   
 >
