@@ -1,19 +1,28 @@
-package com.jvm.string;
+package string;
+
+
+import org.junit.Test;
 
 /**
  * 字符串拼接操作
  */
 public class StringTest5 {
 
-    public static void test1(){
+    @Test
+    public void test1(){
         String s1 = "a" + "b" + "c";//编译期优化：等同于"abc"
         String s2 = "abc"; //"abc"一定是放在字符串常量池中，将此地址赋给s2
+        /*
+         * 最终.java编译成.class,再执行.class
+         * String s1 = "abc";
+         * String s2 = "abc"
+         */
         System.out.println(s1 == s2); //true
         System.out.println(s1.equals(s2)); //true
     }
 
-
-    public static void test2(){
+    @Test
+    public void test2(){
         String s1 = "javaEE";
         String s2 = "hadoop";
 
@@ -37,8 +46,8 @@ public class StringTest5 {
         System.out.println(s3 == s8);//true
     }
 
-
-    public static void test3(){
+    @Test
+    public void test3(){
         String s1 = "a";
         String s2 = "b";
         String s3 = "ab";
@@ -59,7 +68,8 @@ public class StringTest5 {
        如果拼接符号左右两边都是字符串常量或常量引用，则仍然使用编译期优化，即非StringBuilder的方式。
     2. 针对于final修饰类、方法、基本数据类型、引用数据类型的量的结构时，能使用上final的时候建议使用上。
      */
-    public static void test4(){
+    @Test
+    public void test4(){
         final String s1 = "a";
         final String s2 = "b";
         String s3 = "ab";
@@ -67,7 +77,8 @@ public class StringTest5 {
         System.out.println(s3 == s4);//true
     }
     //练习：
-    public static void test5(){
+    @Test
+    public void test5(){
         String s1 = "javaEEhadoop";
         String s2 = "javaEE";
         String s3 = s2 + "hadoop";
@@ -88,7 +99,8 @@ public class StringTest5 {
      改进的空间：在实际开发中，如果基本确定要前前后后添加的字符串长度不高于某个限定值highLevel的情况下,建议使用构造器实例化：
                StringBuilder s = new StringBuilder(highLevel);//new char[highLevel]
      */
-    public static void test6(){
+    @Test
+    public void test6(){
 
         long start = System.currentTimeMillis();
 
@@ -100,7 +112,7 @@ public class StringTest5 {
         System.out.println("花费的时间为：" + (end - start));
     }
 
-    public static void method1(int highLevel){
+    public void method1(int highLevel){
         String src = "";
         for(int i = 0;i < highLevel;i++){
             src = src + "a";//每次循环都会创建一个StringBuilder、String
@@ -109,7 +121,7 @@ public class StringTest5 {
 
     }
 
-    public static void method2(int highLevel){
+    public void method2(int highLevel){
         //只需要创建一个StringBuilder
         StringBuilder src = new StringBuilder();
         for (int i = 0; i < highLevel; i++) {
@@ -117,9 +129,4 @@ public class StringTest5 {
         }
 //        System.out.println(src);
     }
-
-    public static void main(String[] args) {
-        test1();
-    }
-
 }
