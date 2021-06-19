@@ -388,10 +388,68 @@ GC Roots包括:
 ![image-20210617190942513](README.assets/image-20210617190942513.png)
 
 ```
+标记清除算法；
+主要用于服务端，低停顿（低stw）
 四大过程 p96,三个缺点 p97
 ```
 
+**总结：**
 
+![image-20210617194523437](README.assets/image-20210617194523437.png)
+
+### 8.7.Garbage First(G1)
+
+p 98
+
+```
+整体标记整理，Region之间标记复制 
+Region ； 优先级列表
+四大过程；
+低stw和高吞吐兼得，6G到8G内存以上的大内存机器G1比CMS表现更好
+缺点： 卡表多，内存占用大，20%的堆空间
+```
+
+### 8.8.Shenandoah
+
+p 105
+
+```
+和G1相似的内存布局；
+9大步骤；
+G1的筛选回收只能并行，Shenandoah可以并发回收（卡表->连接矩阵，对象头上多一个转发指针，CAS保证并发访问，读写屏障拦截）
+```
+
+书上不清晰的图：
+
+![image-20210618112916881](README.assets/image-20210618112916881.png)
+
+### 8.9.ZGC
+
+p112
+
+```
+Region动态大小，支持动态创建、销毁；
+染色指针;
+只能linux;
+虚拟内存到物理内存多重映射
+4大步骤
+```
+
+### 8.10.常见垃圾回收器组合参数设定：(1.8)
+
+>```
+>* -XX:+UseSerialGC = Serial New (DefNew) + Serial Old
+>  * 小型程序。默认情况下不会是这种选项，HotSpot会根据计算及配置和JDK版本自动选择收集器
+>* -XX:+UseParNewGC = ParNew + SerialOld
+>  * 这个组合已经很少用（在某些版本中已经废弃）
+>  * https://stackoverflow.com/questions/34962257/why-remove-support-for-parnewserialold-anddefnewcms-in-the-future
+>* -XX:+UseConc(urrent)MarkSweepGC = ParNew + CMS + Serial Old
+>* -XX:+UseParallelGC = Parallel Scavenge + Parallel Old (1.8默认)
+>* -XX:+UseG1GC = G1
+>* Linux中没找到默认GC的查看方法，而windows中会打印UseParallelGC 
+>  * java +XX:+PrintCommandLineFlags -version
+>  * 通过GC的日志来分辨
+>```
 
 ## 9.HotSpot(what is ?)
 
@@ -837,4 +895,283 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 ### 15.6.字符串常量池的垃圾回收
 
 [测试代码](src/main/java/com/jvm/string/StringGCTest.java)
+
+## 16.调优实战
+
+### 16.1.hotspot参数分类
+
+>标准： - 开头，所有的HotSpot都支持
+>
+>非标准：-X 开头，特定版本HotSpot支持特定命令
+>
+>不稳定：-XX 开头，下个版本可能取消
+
+### 16.2.Jvm调优追求的两个目标
+
+所谓调优，首先确定，追求啥？吞吐量优先，还是响应时间优先？还是在满足一定的响应时间的情况下，要求达到多大的吞吐量...
+
+1. 吞吐量：用户线程执行时间/(用户线程执行时间+垃圾回收线程)
+2. 响应时间：STW越短，响应时间越好
+
+>吞吐量优先：科学计算，吞吐量，数据挖掘，thrput（PS + PO）
+>
+>响应时间优先：网站 GUI API （1.8 G1）
+
+### 16.3.调优步骤
+
+ 1. 熟悉业务场景（没有最好的垃圾回收器，只有最合适的垃圾回收器）
+     1. 响应时间、停顿时间 [CMS G1 ZGC] （需要给用户作响应）
+     2. 吞吐量 = 用户时间 /( 用户时间 + GC时间) [PS]
+
+  2. 选择回收器组合
+
+  3. 计算内存需求（经验值 1.5G 16G）
+
+  4. 选定CPU（越高越好）
+
+  5. 设定年代大小、升级年龄
+
+  6. 设定日志参数
+
+     1. 设参数
+
+        ```shell
+        -Xloggc:/opt/xxx/logs/xxx-xxx-gc-%t.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=20M 
+        -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCCause
+        ```
+
+     2. 或者每天产生一个日志文件
+
+  7. 观察日志情况
+
+### 16.4.面试场景题
+
+1. 有一个50万PV的资料类网站（从磁盘提取文档到内存）原服务器32位，1.5G的堆，用户反馈网站比较缓慢，因此公司决定升级，新的服务器为64位，16G的堆内存，结果用户反馈卡顿十分严重，反而比以前效率更低了
+      1. 为什么原网站慢?
+         很多用户浏览数据，很多数据load到内存，内存不足，频繁GC，STW长，响应时间变慢
+      2. 为什么会更卡顿？
+         内存越大，FGC时间越长
+      3. 咋办？
+         PS -> PN + CMS 或者 G1
+
+2. 系统CPU经常100%，如何调优？**(面试高频**)
+
+   > CPU100%那么一定有线程在占用系统资源
+   >
+   >    1. 找出哪个进程cpu高
+   >
+   >       ```shell
+   >       top
+   >       ```
+   >
+   >    2. 该进程中的哪个线程cpu高
+   >
+   >       ```shell
+   >       top -Hp  pid
+   >       ```
+   >
+   >    3. 导出该线程的堆栈 
+   >
+   >       ```shell
+   >       jstack
+   >       ```
+   >
+   >    4. 查找哪个方法（栈帧）消耗时间 
+   >
+   >       ```shell
+   >       jstack
+   >       ```
+   >
+   >    5. 工作线程占比高 | 垃圾回收线程占比高
+
+3. 系统内存飙高，如何查找问题？（**面试高频**）
+      1. 导出堆内存
+
+         ```shell
+          jmap
+         ```
+
+      2. 分析 (jhat jvisualvm mat jprofiler ... )
+
+## 17.真实项目调优分析问题解决步骤
+
+### 17.1.线程池的死锁排查(linux环境)
+
+1. [demo代码链接](src/main/java/com/jvm/exam/DeadLock.java)
+
+2. 代码拷贝到环境中，运行代码
+
+   ![image-20210619113929320](README.assets/image-20210619113929320.png)
+
+3. 结果死锁
+
+   ![image-20210619114022172](README.assets/image-20210619114022172.png)
+
+4. jps查看java进程
+
+   ![image-20210619115104990](README.assets/image-20210619115104990.png)
+
+5. jstack分析我们java进程的线程状态
+
+   ```shell
+   jstack pid
+   ```
+
+   ![image-20210619115705058](README.assets/image-20210619115705058.png)
+
+6. 发现死锁位置,修改代码
+
+7. jstack的dump文件过长,或对于100个线程这样的多个线程怎么查找
+
+   >1. 将jstack dump文件重定向到我们本地
+   >
+   >   ![image-20210619121655356](README.assets/image-20210619121655356.png)
+   >
+   >2. 打开a.txt文件,找到我们的业务线程,并且状态为阻塞BLOCKED,和被我们的定义的监视器对象(锁)
+   >
+   >   ![image-20210619121953947](README.assets/image-20210619121953947.png)
+   >
+   >3. 此时发现我们的锁对象<0x00000000f3862120>,然后Ctrl+F搜索这个值,找到线程状态为RUNNABLE的业务线程,排查这个线程的哪个代码一直占用锁,不释放,修改代码,解决死锁
+
+### 17.2.频繁GC问题排查
+
+1. [代码链接](src/main/java/com/jvm/exam/FGCProblem.java)
+
+2. 代码拷贝到环境中，运行代码
+
+   ![image-20210619133115054](README.assets/image-20210619133115054.png)
+
+3. 运行结果，出现YGC
+
+   ![image-20210619134024793](README.assets/image-20210619134024793.png)
+
+4. 一段时间后，疯狂FGC,但每次只回收一点点
+
+   ![image-20210619134945311](README.assets/image-20210619134945311.png)
+
+5. 使用top查看耗费cpu或内存的进程
+
+   ![image-20210619135402107](README.assets/image-20210619135402107.png)
+
+6. 使用top -Hp pid 查看我们java进程的各个线程消耗cpu和内存情况
+
+   ![image-20210619135800158](README.assets/image-20210619135800158.png)
+
+7. 使用jmap -histo 71632 | head -20 ：查看堆中对象实例个数前20的对象
+
+   ![image-20210619140211911](README.assets/image-20210619140211911.png)
+
+8. 去代码排查，发现：
+
+   - 每执行一个调度任务
+
+     ![image-20210619141107119](README.assets/image-20210619141107119.png)
+
+   - scheduleWithFixedDelay里面都会new一个ScheduledFutureTask
+
+     ![image-20210619141226836](README.assets/image-20210619141226836.png)
+
+   - 和日志上看到的一样，光ScheduledFutureTask就有94万多个，每循环一次modelFit都会创建一个ScheduledFutureTask被添加到任务队列里，无法回收，但是我们的线程池的拒绝策略DiscardOldestPolicy是丢弃旧任务，死循环for一直向线程池提交任务，线程池承受不了时，拒绝策略会把旧任务从任务队列丢出来，成为垃圾，每次我们FGC都会回收一些，但是只能回收一部分，日志上大约4k
+
+![image-20210619144428393](README.assets/image-20210619144428393.png)
+
+### 17.3.面试注意事项
+
+>```shell
+>#生成heap.hprof快照
+>jmap -dump:live,format=b,file=heap.hprof 6268
+>#然后sz下载到本地机器使用MAT分析
+>sz heap.hprof
+>```
+>
+><font color='red'>在线上系统，内存特别大，jmap执行期间会对进程产生很大影响，甚至卡顿（电商不适合）</font>
+>1：设定了参数-XX:+HeapDumpOnOutOfMemoryError,OOM的时候会自动产生堆转储文件
+>2：很多服务器备份（高可用），停掉这台服务器对其他服务器不影响
+>3：在线定位(一般小点儿公司用不到)
+>
+><font color='red'>JvisualVM等图形界面分析工具不能直接连接线上系统（JMX协议），影响服务器的性能，一般只用作上线前的测试，在压测的时候观察堆内存变化</font>
+
+## 18.使用arthas在线跟踪
+
+><font color='red'>为什么需要在线排查？</font>
+>   在生产上我们经常会碰到一些不好排查的问题，例如线程安全问题，用最简单的threaddump或者heapdump不好查到问题原因。为了排查这些问题，有时我们会临时加一些日志，比如在一些关键的函数里打印出入参，然后重新打包发布，如果打了日志还是没找到问题，继续加日志，重新打包发布。对于上线流程复杂而且审核比较严的公司，从改代码到上线需要层层的流转，会大大影响问题排查的进度。 
+
+1. [arthas下载安装链接](https://github.com/alibaba/arthas/blob/master/README_CN.md)
+
+2. 程序代码
+
+   ```java
+   public class MathGame {
+       public static void main(String[] args) throws InterruptedException {
+           MathGame game = new MathGame();
+           while (true) {
+               game.run();
+               TimeUnit.SECONDS.sleep(1);
+               // 这个不生效，因为代码一直跑在 while里
+               System.out.println("in loop");
+           }
+       }
+    
+       public void run() throws InterruptedException {
+           // 这个生效，因为run()函数每次都可以完整结束
+           System.out.println("call run()");
+       }
+   ```
+
+   
+
+3. 把arthas程序attach到我们的上面运行的程序
+
+   ![image-20210619205320683](README.assets/image-20210619205320683.png)
+
+   ![image-20210619192856953](README.assets/image-20210619192856953.png)
+
+4. 常规操作：[详细文档](https://arthas.aliyun.com/doc/retransform.html)
+
+   >1.  jvm:	观察jvm信息
+   >2. thread:   定位线程问题
+   >3. dashboard:   观察系统情况
+   >4. heapdump:  导出dump文件，可以用JvisualVM分析
+   >5. jad：反编译，作用：
+   >   1. 动态代理生成类的问题定位
+   >   2. 第三方的类（观察代码）
+   >   3. 版本问题（确定自己最新提交的版本是不是被使用）
+   >6. sc : search class
+   >7. 没有包含的功能：jmap -histo 71632 | head -20 ：查看堆中对象实例个数前20的对象
+
+5. 测试热替换
+
+   <font color='red'>**注意正在运行的方法无法在线替换**:</font>
+
+   ![image-20210619210538907](README.assets/image-20210619210538907.png)
+
+   >- 将我们的.class代码反编译成我们的.java代码,提供我们修改
+   >
+   >![image-20210619205358762](README.assets/image-20210619205358762.png)
+   >
+   >- 修改代码
+   >
+   >![image-20210619205426400](README.assets/image-20210619205426400.png)
+   >
+   >![image-20210619205449159](README.assets/image-20210619205449159.png)
+   >
+   >- mc 编译
+   >
+   >![image-20210619205548543](README.assets/image-20210619205548543.png)
+   >
+   >- retransform 热替换
+   >
+   >![image-20210619205628011](README.assets/image-20210619205628011.png)
+   >
+   >- 结果完成热替换
+   >
+   >![image-20210619205708637](README.assets/image-20210619205708637.png)
+   >
+   >
+
+   
+
+6. 
+
+
 
