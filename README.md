@@ -124,6 +124,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 3. 常量池(Constant Pool) 
 4. 访问标志(access_flags) 2字节
 5. 等等...
+6. ![QQ图片20210620201533](README.assets/QQ图片20210620201533.jpg)
 
 ## 2.JMM
 
@@ -161,13 +162,13 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 > StoreStore屏障：
 >
 > 	对于这样的语句Store1; StoreStore; Store2，
-> 			
+> 				
 > 	在Store2及后续写入操作执行前，保证Store1的写入操作对其它处理器可见。
 >
 > LoadStore屏障：
 >
 > 	对于这样的语句Load1; LoadStore; Store2，
-> 			
+> 				
 > 	在Store2及后续写入操作被刷出前，保证Load1要读取的数据被读取完毕。
 >
 > StoreLoad屏障：
@@ -476,46 +477,71 @@ hotspot指的是热点代码探测技术
 
 [示例代码](src/main/java/com/jvm/clinit/TestSyncClinit.java)
 
-### 11.3.类加载器的种类
+### 11.3.Loading的类加载器
 
-![image-20210610161031760](README.assets/image-20210610161031760.png)
+![3C1378CD341F206A74899F50365FB21C](README.assets/3C1378CD341F206A74899F50365FB21C-1624193527151.png)
 
-#### 11.3.1.引导类加载器
+类加载器之间的等级关系
 
-> Bootstrap Class Loader,使用C,C++编写,用于加载String等java核心类库,我们用户无法使用,只加载包名为java,javax,sun开头的类
+```java
+public class ClassLoaderLevel {
+    public static void main(String[] args) {
+        // BootStrapClassLoader是C++写的,java类库没有与之对应的类,返回为null
+        System.out.println(String.class.getClassLoader());           // null
+        System.out.println(sun.awt.HKSCS.class.getClassLoader());    //null
+        // ExtClassLoader
+        System.out.println(sun.net.spi.nameservice.dns.DNSNameService.class.getClassLoader());
+        // AppClassLoader
+        System.out.println(ClassLoaderLevel.class.getClassLoader());
 
-#### 11.3.2.自定义类加载器
+        // ExtClassLoader是被BootStrapClassLoader加载的
+        System.out.println(sun.net.spi.nameservice.dns.DNSNameService.class.getClassLoader().getClass().getClassLoader());
+        // AppClassLoader是被BootStrapClassLoader加载的
+        System.out.println(ClassLoaderLevel.class.getClassLoader().getClass().getClassLoader());
 
-> 继承于java定义的ClassLoader虚基类的子类都为自定义类加载器
+        // 自定义ClassLoader的父加载器AppClassLoader
+        System.out.println(new MSBClassLoader().getParent());
+        // 系统加载器是AppClassLoader
+        System.out.println(ClassLoader.getSystemClassLoader());
+    }
+}
+```
+
+每个类加载器能加载的路径
+
+> 从Launcher的源码发现
 >
-> 1. 扩展类加载器,ExtClassLoader,从java.ext.dirs系统属性所指定的目录中加载类库
-> 2. 系统类加载器,默认是AppClassLoader,自己写的类的默认加载器
+> ![image-20210620223830175](README.assets/image-20210620223830175.png)
+>
+> ![image-20210620223803021](README.assets/image-20210620223803021.png)
+>
+> ![image-20210620223743052](README.assets/image-20210620223743052.png)
 
-[代码链接](src/main/java/com/jvm/classLoader/TestClassLoader.java)
+[测试代码](src/main/java/com/jvm/classLoader/ClassLoaderScope.java)
 
-自定义类加载器步骤
+## 12.双亲委派机制过程
 
-![image-20210610160804269](README.assets/image-20210610160804269.png)
-
-[代码链接](src/main/java/com/jvm/classLoader/CustomClassLoader.java)
-
-## 12.双亲委派机制
-
-![image-20210610163108846](README.assets/image-20210610163108846.png)
+![1422FFA2D7AA55B2C1D514DEB3B28470](README.assets/1422FFA2D7AA55B2C1D514DEB3B28470.png)
 
 [验证 代码](src/main/java/com/jvm/parentAppoint/StringTest.java)
 
+![2AF8BC3492B6F0C603FED166DE01A472 (2)](README.assets/2AF8BC3492B6F0C603FED166DE01A472 (2).png)
+
+### 12.1双亲委派机制好处
+
+>1. 安全,避免核心API被替换
+>
+>   ```
+>   例:写一个假的java.lang.String,里面包括获取用户密码的操作,打包发布,被别的公司当初第三方依赖使用,它的用户密码就会被盗取
+>   ```
+>
+>2. 避免类的重复加载
+
 [验证代码](src/main/java/java/lang/String.java)
-
-![image-20210610164022595](README.assets/image-20210610164022595.png)
-
-好处:
-
-![image-20210610164110362](README.assets/image-20210610164110362.png)
 
 [验证代码](src/main/java/java/lang/Test.java)
 
-### 12.1.JVM中两个类是否为同一个类
+### 12.2.JVM中两个类是否为同一个类
 
 >条件:
 >
@@ -906,6 +932,170 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 >
 >不稳定：-XX 开头，下个版本可能取消
 
+#### 16.1.1.常用参数
+
+* -Xmn -Xms -Xmx -Xss
+
+  > 年轻代 最小堆 最大堆 栈空间
+
+* -XX:+UseTLAB
+
+  > 使用TLAB，默认打开
+
+* -XX:+PrintTLAB
+
+  > 打印TLAB的使用情况
+
+* -XX:TLABSize
+
+  > 设置TLAB大小
+
+* -XX:+DisableExplictGC
+
+  > System.gc()不管用 ，FGC
+
+* -XX:+PrintGC
+
+* -XX:+PrintGCDetails
+
+* -XX:+PrintHeapAtGC
+
+* -XX:+PrintGCTimeStamps
+
+* -XX:+PrintGCApplicationConcurrentTime (低)
+
+  > 打印应用程序时间
+
+* -XX:+PrintGCApplicationStoppedTime （低）
+
+  > 打印暂停时长
+
+* -XX:+PrintReferenceGC （重要性低）
+
+  > 记录回收了多少种不同引用类型的引用
+
+* -verbose:class
+
+  > 类加载详细过程
+
+* -XX:+PrintVMOptions
+
+* -XX:+PrintFlagsFinal  -XX:+PrintFlagsInitial
+
+  ```shell
+  # 查CMS有关的参数默认值
+  java -XX:+PrintFlagsFinal -version | grep CMS
+  ```
+
+* -Xloggc:opt/log/gc.log
+
+* -XX:MaxTenuringThreshold
+
+  > 升代年龄，最大值15
+
+* 锁自旋次数 -XX:PreBlockSpin(CMS默认6,其他10)  ;热点代码检测参数-XX:CompileThreshold  ;逃逸分析-XX:+DoEscapeAnalysis  ;标量替换 -XX:+EliminateAllocations
+  这些不建议设置
+
+#### 16.1.2.Parallel常用参数
+
+* -XX:SurvivorRatio
+
+  >Eden:Survivor=8:1
+
+* -XX:PreTenureSizeThreshold
+  
+  > 大对象到底多大
+  
+* -XX:MaxTenuringThreshold>
+
+  >对象年龄 15
+
+* -XX:+ParallelGCThreads
+  
+  > 并行收集器的线程数，同样适用于CMS，一般设为和CPU核数相同
+  
+* -XX:+UseAdaptiveSizePolicy
+  
+  > 自动选择各区大小比例
+
+#### 16.1.3.CMS常用参数
+
+* -XX:+UseConcMarkSweepGC
+
+  >用CMS
+
+* -XX:ParallelCMSThreads
+  
+  > CMS线程数量
+  
+* -XX:CMSInitiatingOccupancyFraction
+  
+  > 使用多少比例的老年代后开始CMS收集，默认是68%(近似值)，如果频繁发生SerialOld卡顿，应该调小，（频繁CMS回收）
+  
+* -XX:+UseCMSCompactAtFullCollection
+  
+  > 在FGC时进行整理
+  
+* -XX:CMSFullGCsBeforeCompaction
+  
+  > 多少次FGC之后进行整理
+  
+* -XX:+CMSClassUnloadingEnabled
+
+  >垃圾回收会清理永久代，移除不再使用的classes
+
+* -XX:CMSInitiatingPermOccupancyFraction
+  
+  > 达到什么比例时进行Perm回收
+  
+* GCTimeRatio
+  
+  > 设置GC时间占用程序运行时间的百分比
+  
+* -XX:MaxGCPauseMillis
+  
+  > 停顿时间，是一个建议时间，GC会尝试用各种手段达到这个时间，比如减小年轻代
+
+#### 16.1.4.G1常用参数
+
+* -XX:+UseG1GC
+
+  >用G1
+
+* -XX:MaxGCPauseMillis
+  
+  > 设置最大垃圾收集停顿时间
+  
+* -XX:GCPauseIntervalMillis
+  
+  > GC的间隔时间
+  
+* -XX:+G1HeapRegionSize
+  
+  > 分区大小，建议逐渐增大该值，1 2 4 8 16 32。
+  > 随着size增加，垃圾的存活时间更长，GC间隔更长，但每次GC的时间也会更长
+  > ZGC做了改进（动态区块大小）
+  
+* -XX:G1NewSizePercent
+  
+  > 新生代最小比例，默认为5%
+  
+* -XX:G1MaxNewSizePercent
+  
+  > 新生代最大比例，默认为60%
+  
+* -XX:GCTimeRatio
+  
+  > GC时间建议比例，G1会根据这个值调整堆空间
+  
+* -XX:ConcGCThreads
+  
+  > 线程数量
+  
+* -XX:InitiatingHeapOccupancyPercent
+  
+  > 启动G1的堆空间占用比例
+
 ### 16.2.Jvm调优追求的两个目标
 
 所谓调优，首先确定，追求啥？吞吐量优先，还是响应时间优先？还是在满足一定的响应时间的情况下，要求达到多大的吞吐量...
@@ -985,13 +1175,58 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
    >    5. 工作线程占比高 | 垃圾回收线程占比高
 
 3. 系统内存飙高，如何查找问题？（**面试高频**）
-      1. 导出堆内存
 
-         ```shell
-          jmap
-         ```
+   >```shell
+   >#生成heap.hprof快照
+   >jmap -dump:live,format=b,file=heap.hprof 6268
+   >#然后sz下载到本地机器使用MAT分析
+   >sz heap.hprof
+   >```
+   >
+   ><font color='red'>在线上系统，内存特别大，jmap执行期间会对进程产生很大影响，甚至卡顿（电商不适合）</font>
+   >1：设定了参数-XX:+HeapDumpOnOutOfMemoryError,OOM的时候会自动产生堆转储文件
+   >2：很多服务器备份（高可用），停掉这台服务器对其他服务器不影响
+   >3：在线定位(一般小点儿公司用不到)
+   >
+   ><font color='red'>JvisualVM等图形界面分析工具不能直接连接线上系统（JMX协议），影响服务器的性能，一般只用作上线前的测试，在压测的时候观察堆内存变化</font>
+   
+4. 线程池运用不当(17.2章节)
 
-      2. 分析 (jhat jvisualvm mat jprofiler ... )
+5. tomcat http-header-size过大问题,导致OOM
+
+      ```properties
+      #默认4096字节 
+      server.max-http-header-size=10000000
+      ```
+
+      在线排查步骤:
+
+      - ```shell
+        #按内存占用大小从大到小排序
+        jmap -histo 75156 | less
+        ```
+
+      - 发现关于Http对象数量不多,但占用的内存很大
+
+      - 排查发现每来一个请求都创建一个Http11OutputBuffer,贼大
+
+      - 最后修改上面的http请求头的大小解决问题
+
+6. lambda表达式导致方法区溢出问题,[代码链接](src/main/java/com/jvm/exam/LambdaGC.java)
+
+      >每个lambda表达式的创建,都会有一个Class对象,class信息放在元空间,导致OOM
+
+7. 直接内存溢出问题（少见）
+
+      > 《深入理解Java虚拟机》P59，使用Unsafe分配直接内存，或者使用NIO的问题
+
+8. 栈溢出问题
+
+   > -Xss设定太小
+
+9. 如果有一个系统，内存一直消耗不超过10%，但是观察GC日志，发现FGC总是频繁产生，会是什么引起的？
+
+   > 有人在代码显式调用System.gc();
 
 ## 17.真实项目调优分析问题解决步骤
 
@@ -1075,22 +1310,6 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 ![image-20210619144428393](README.assets/image-20210619144428393.png)
 
-### 17.3.面试注意事项
-
->```shell
->#生成heap.hprof快照
->jmap -dump:live,format=b,file=heap.hprof 6268
->#然后sz下载到本地机器使用MAT分析
->sz heap.hprof
->```
->
-><font color='red'>在线上系统，内存特别大，jmap执行期间会对进程产生很大影响，甚至卡顿（电商不适合）</font>
->1：设定了参数-XX:+HeapDumpOnOutOfMemoryError,OOM的时候会自动产生堆转储文件
->2：很多服务器备份（高可用），停掉这台服务器对其他服务器不影响
->3：在线定位(一般小点儿公司用不到)
->
-><font color='red'>JvisualVM等图形界面分析工具不能直接连接线上系统（JMX协议），影响服务器的性能，一般只用作上线前的测试，在压测的时候观察堆内存变化</font>
-
 ## 18.使用arthas在线跟踪
 
 ><font color='red'>为什么需要在线排查？</font>
@@ -1137,7 +1356,8 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
    >   2. 第三方的类（观察代码）
    >   3. 版本问题（确定自己最新提交的版本是不是被使用）
    >6. sc : search class
-   >7. 没有包含的功能：jmap -histo 71632 | head -20 ：查看堆中对象实例个数前20的对象
+   >7. dashboard: 观察系统情况
+   >8. 没有包含的功能：jmap -histo 71632 | head -20 ：查看堆中对象实例个数前20的对象
 
 5. 测试热替换
 
@@ -1171,7 +1391,93 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
    
 
-6. 
 
+## 19.CMS日志分析
 
+```shell
+-Xms20M -Xmx20M -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC
+```
+
+>```java
+>[GC (Allocation Failure) [ParNew: 6144K->640K(6144K), 0.0265885 secs] 6585K->2770K(19840K), 0.0268035 secs] [Times: user=0.02 sys=0.00, real=0.02 secs] 
+>// ParNew：年轻代收集器
+>// 6144->640：年轻代收集前后的对比
+>// （6144）：整个年轻代容量
+>// 6585 -> 2770：整个堆收集前后的情况
+>// （19840）：整个堆大小
+>```
+>
+>```java
+>[GC (CMS Initial Mark) [1 CMS-initial-mark: 8511K(13696K)] 9866K(19840K), 0.0040321 secs] [Times: user=0.01 sys=0.00, real=0.00 secs] 
+>//1.初始标记: 8511 (13696) : 老年代使用内存（老年代最大内存） 9866 (19840) : 整个堆使用内存（堆最大内存）
+>
+>[CMS-concurrent-mark-start]
+>[CMS-concurrent-mark: 0.018/0.018 secs] [Times: user=0.01 sys=0.00, real=0.02 secs] 
+>//2.并发标记: 这里的时间意义不大，因为是并发执行
+>[CMS-concurrent-preclean-start]
+>[CMS-concurrent-preclean: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+>//3.对card marking产生的dirty card卡页进行clean，cms gc线程会扫描 dirty card对应的内存区域，更新之前记录的过时的引用信息并且去掉dirty card标记
+>[GC (CMS Final Remark) [YG occupancy: 1597 K (6144 K)][Rescan (parallel) , 0.0008396 secs][weak refs processing, 0.0000138 secs][class unloading, 0.0005404 secs][scrub symbol table, 0.0006169 secs][scrub string table, 0.0004903 secs][1 CMS-remark: 8511K(13696K)] 10108K(19840K), 0.0039567 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+>//4.重新标记	
+>//STW阶段，YG occupancy:年轻代占用及容量
+>//[Rescan (parallel)：STW下的存活对象标记
+>//weak refs processing: 弱引用处理
+>//class unloading: 卸载用不到的class,清理元空间
+>//scrub symbol table: 清理元数据符号
+>//scrub string table  清除字符串常量池
+>//CMS-remark: 8511K(13696K): 阶段过后的老年代占用及容量  10108K(19840K): 阶段过后的堆占用及容量
+>
+>[CMS-concurrent-sweep-start]
+>[CMS-concurrent-sweep: 0.005/0.005 secs] [Times: user=0.00 sys=0.00, real=0.01 secs] 
+>//5.并发清除: 标记已经完成
+>[CMS-concurrent-reset-start]
+>[CMS-concurrent-reset: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
+>//6.并发重置内部结构: 为下次GC做准备
+>```
+
+## 20.G1日志分析
+
+```shell
+-Xms20M -Xmx20M -XX:+PrintGCDetails -XX:+UseG1GC
+```
+
+>```java
+>[GC pause (G1 Evacuation Pause) (young) (initial-mark), 0.0015790 secs]
+>//young -> 年轻代 Evacuation-> 复制存活对象到别的Region
+>//initial-mark 混合回收的阶段，这里是YGC混合Old GC
+>   [Parallel Time: 1.5 ms, GC Workers: 1] //一个GC线程
+>      [GC Worker Start (ms):  92635.7]
+>      [Ext Root Scanning (ms):  1.1]
+>      [Update RS (ms):  0.0]
+>         [Processed Buffers:  1]
+>      [Scan RS (ms):  0.0]
+>      [Code Root Scanning (ms):  0.0]
+>      [Object Copy (ms):  0.1]
+>      [Termination (ms):  0.0]
+>         [Termination Attempts:  1]
+>      [GC Worker Other (ms):  0.0]
+>      [GC Worker Total (ms):  1.2]
+>      [GC Worker End (ms):  92636.9]
+>   [Code Root Fixup: 0.0 ms]
+>   [Code Root Purge: 0.0 ms]
+>   [Clear CT: 0.0 ms]
+>   [Other: 0.1 ms]
+>      [Choose CSet: 0.0 ms]
+>      [Ref Proc: 0.0 ms]
+>      [Ref Enq: 0.0 ms]
+>      [Redirty Cards: 0.0 ms]
+>      [Humongous Register: 0.0 ms]
+>      [Humongous Reclaim: 0.0 ms]
+>      [Free CSet: 0.0 ms]
+>   [Eden: 0.0B(1024.0K)->0.0B(1024.0K) Survivors: 0.0B->0.0B Heap: 18.8M(20.0M)->18.8M(20.0M)]
+> [Times: user=0.00 sys=0.00, real=0.00 secs] 
+>//以下是混合回收其他阶段
+>[GC concurrent-root-region-scan-start]
+>[GC concurrent-root-region-scan-end, 0.0000078 secs]
+>[GC concurrent-mark-start]
+>//没有空闲的Region,无法evacuation,进行FGC
+>[Full GC (Allocation Failure)  18M->18M(20M), 0.0719656 secs]
+>   [Eden: 0.0B(1024.0K)->0.0B(1024.0K) Survivors: 0.0B->0.0B Heap: 18.8M(20.0M)->18.8M(20.0M)], [Metaspace: 38
+>76K->3876K(1056768K)] [Times: user=0.07 sys=0.00, real=0.07 secs]
+>```
 
