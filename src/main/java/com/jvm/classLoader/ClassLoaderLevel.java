@@ -16,7 +16,7 @@ public class ClassLoaderLevel {
         System.out.println(ClassLoaderLevel.class.getClassLoader().getClass().getClassLoader());
 
         // 自定义ClassLoader的父加载器AppClassLoader
-        System.out.println(new MSBClassLoader().getParent());
+        System.out.println(new MyClassLoader().getParent());
         // 系统加载器是AppClassLoader
         System.out.println(ClassLoader.getSystemClassLoader());
     }

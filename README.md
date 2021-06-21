@@ -130,7 +130,9 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 ### 2.1.一致性
 
-- MESI协议
+- 总线锁(早期)
+
+- MESI协议 https://www.cnblogs.com/z00377750/p/9180644.html
 
 >Core0修改v后，发送一个信号，将Core1缓存的v标记为失效，并将修改值写回内存。
 >
@@ -138,11 +140,11 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 >
 >Core1使用v前，发现缓存中的v已经失效了，得知v已经被修改了，于是重新从其他缓存或内存中加载v。
 
-- 总线锁
+
 
 ### 2.2.乱序
 
-- 硬件
+- 硬件解决乱序的两种方式:
 
 >1.内存屏障 X86
 >
@@ -150,7 +152,7 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 >lfence：load | 在lfence指令前的读操作当必须在lfence指令后的读操作前完成。
 >mfence：modify/mix | 在mfence指令前的读写操作当必须在mfence指令后的读写操作前完成。
 >
->2.原子指令
+>2.原子指令,lock等操作
 
 - JVM级别如何规范（JSR133）
 
@@ -187,17 +189,17 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 2. JVM层面
    volatile内存区的读写 都加屏障
 
-   > StoreStoreBarrier
+   > StoreStoreBarrier                             前面的写
    >
-   > volatile 写操作
+   > volatile 写操作                 ====>     volatile 写
    >
-   > StoreLoadBarrier
+   > StoreLoadBarrier                             后面的读
 
-   > LoadLoadBarrier
+   > LoadLoadBarrier                            前面的读
    >
-   > volatile 读操作
+   > volatile 读操作                 ====>    volatile 读
    >
-   > LoadStoreBarrier
+   > LoadStoreBarrier                            后面的写
 
 3. OS和硬件层面
    https://blog.csdn.net/qq_26222859/article/details/52235930
@@ -519,15 +521,86 @@ public class ClassLoaderLevel {
 
 [测试代码](src/main/java/com/jvm/classLoader/ClassLoaderScope.java)
 
-## 12.双亲委派机制过程
+### 11.4.双亲委派机制过程
 
-![1422FFA2D7AA55B2C1D514DEB3B28470](README.assets/1422FFA2D7AA55B2C1D514DEB3B28470.png)
+> ![1422FFA2D7AA55B2C1D514DEB3B28470](README.assets/1422FFA2D7AA55B2C1D514DEB3B28470.png)
+>
+> [验证 代码](src/main/java/com/jvm/parentAppoint/StringTest.java)
 
-[验证 代码](src/main/java/com/jvm/parentAppoint/StringTest.java)
+> 使用ClassLoader
+>
+> ```java
+> // 主要的loadClass方法
+> Class clazz = LoadClassByHand.class.getClassLoader().loadClass("com.jvm.TestClass");
+> System.out.println(clazz.getName());
+> ```
+
+
+
+> ClassLoader源码:
+
+```java
+ protected Class<?> loadClass(String name, boolean resolve)
+        throws ClassNotFoundException
+    {
+        synchronized (getClassLoadingLock(name)) {
+            // First, check if the class has already been loaded
+            // find in cache
+            Class<?> c = findLoadedClass(name);
+            // cache没有
+            if (c == null) {
+                long t0 = System.nanoTime();
+                try {
+                    if (parent != null) {
+                        // ClassLoader的构造方法已经把我们自定义的加载器父加载器赋值了
+                        // 递归找父加载器
+                        c = parent.loadClass(name, false);
+                    } else {
+                        // 交给Bootstrap加载器加载
+                        c = findBootstrapClassOrNull(name);
+                    }
+                } catch (ClassNotFoundException e) {
+                    // ClassNotFoundException thrown if class not found
+                    // from the non-null parent class loader
+                }
+
+                // 递归的上层万一返回还是空,下层亲自加载
+                if (c == null) {
+                    // If still not found, then invoke findClass in order
+                    // to find the class.
+                    long t1 = System.nanoTime();
+                    // 自定义ClassLoader重写这个方法
+                    c = findClass(name);
+
+                    // this is the defining class loader; record the stats
+                    sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                    sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                    sun.misc.PerfCounter.getFindClasses().increment();
+                }
+            }
+            if (resolve) {
+                resolveClass(c);
+            }
+            return c;
+        }
+    }
+```
+
+> JDK的双亲委派是**模板方法**模式,我们自定义类加载器只要:
+>
+> ​		**继承ClassLoader,重写findClass,来自定义类加载器**
+>
+> [自定义类加载器代码](src/main/java/com/jvm/classLoader/MyClassLoader.java)
+>
+> [自定义加密类加载器代码](src/main/java/com/jvm/classLoader/ClassLoaderWithEncryption.java)
+>
+> 被加载的class文件位置
+>
+> ![image-20210621111749837](README.assets/image-20210621111749837.png)
 
 ![2AF8BC3492B6F0C603FED166DE01A472 (2)](README.assets/2AF8BC3492B6F0C603FED166DE01A472 (2).png)
 
-### 12.1双亲委派机制好处
+### 11.5.双亲委派机制好处
 
 >1. 安全,避免核心API被替换
 >
@@ -541,12 +614,51 @@ public class ClassLoaderLevel {
 
 [验证代码](src/main/java/java/lang/Test.java)
 
-### 12.2.JVM中两个类是否为同一个类
+### 11.6.JVM中两个类是否为同一个类
 
 >条件:
 >
 >1. 包名,类名一样
 >2. 类加载器一样
+
+### 11.7.双亲委派的打破
+
+1. 如何打破：重写loadClass（）
+
+2. 何时打破过？
+
+   - JDK1.2之前，自定义ClassLoader都必须重写loadClass()
+
+   - ThreadContextClassLoader可以实现基础类调用实现类代码，通过thread.setContextClassLoader指定
+
+   - 热启动，热部署
+
+     >osgi tomcat 都有自己的模块指定classloader（可以加载同一类库的不同版本）
+     >
+     >[由于双亲委派无法热加载](src/main/java/com/jvm/hotLoading/ClassReloading1.java)
+     >
+     >[打破双亲委派实现热加载](src/main/java/com/jvm/hotLoading/ClassReloading2.java)
+
+## 12.六种情况类需要对类Initialization初始化
+
+1. 四个指令(测试代码)
+
+   >- new   测试代码
+   >- getstatic  读静态字段
+   >- putstatic  写静态字段
+   >- invokestatic  调静态方法
+
+2. 反射
+
+3. 初始化子类,父类要在子类之前初始化
+
+4. 执行main之前,先初始化包含main方法的主类
+
+5.  实现类实现了带有default方法的接口,实现类初始化之前,接口先初始化
+
+6. 当使用JDK 1.7的动态语言支持时，如果一个java.lang.invoke.MethodHandle实例最后的解析结果REF_getStatic、REF_putStatic、REF_invokeStatic的方法句柄，并且这个方法句柄所对应的类没有进行过初始化，则需要先触发其初始化
+
+[代码验证](src/main/java/com/jvm/lazyLoading/LazyLoading.java)
 
 ## 13.运行时数据区(Runtime Data Areas )
 
@@ -979,6 +1091,10 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
   > 类加载详细过程
 
 * -XX:+PrintVMOptions
+
+* -XX:+PrintAssembly
+
+  >打印反汇编
 
 * -XX:+PrintFlagsFinal  -XX:+PrintFlagsInitial
 
