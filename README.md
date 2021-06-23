@@ -164,13 +164,13 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 > StoreStore屏障：
 >
 > 	对于这样的语句Store1; StoreStore; Store2，
-> 				
+> 						
 > 	在Store2及后续写入操作执行前，保证Store1的写入操作对其它处理器可见。
 >
 > LoadStore屏障：
 >
 > 	对于这样的语句Load1; LoadStore; Store2，
-> 				
+> 						
 > 	在Store2及后续写入操作被刷出前，保证Load1要读取的数据被读取完毕。
 >
 > StoreLoad屏障：
@@ -297,6 +297,14 @@ GC Roots包括:
 - synchronized持有的对象
 - **对于部分区域收集的时候,需要回收的区域的对象还可能被不需回收区域的对象引用,不需回收区域的这些对象也是GC Roots,例如Minor GC,Major GC,Mixed GC**(卡表的一个元素对应一个卡页，只要卡页有一个以上的对象存在跨代指针，整个卡页加入GC roots（卡表的一个元素）；p85解决卡表的2个问题)
 
+### 6.3.Card Table
+
+>由于YGC的时候,某些由root对象可达的对象指向了OLD区,由于Root Searching算法导致我们可能遍历整个OLD区,来找到我们Y区存活的对象
+>
+>由此,诞生卡表Card Table,如果一个OLD区中有任何一个对象指向Y区，就将该对象位于的卡页对应的卡表的数组元素置1,即变Dirty，下次扫描时，只需要扫描Dirty Card的卡页
+>
+>BitMap:用位来记录卡表的每个卡页的状况
+
 ## 7.垃圾回收算法
 
 标记（三色指针）p87  **增量更新（CMS），原始快照(G1,Shenandoah)**
@@ -380,7 +388,7 @@ GC Roots包括:
 ### 8.5.Parallel Old
 
 ```
- 并发 回收；
+ 并行回收；
  标记整理算法；
  主要用在服务端
  搭配 Parallel Scavenge 实现真正的吞吐量优先，避免Parallel Scavenge+Serial Old，Serial Old拖后腿
@@ -392,6 +400,7 @@ GC Roots包括:
 
 ```
 标记清除算法；
+三色标记,增量更新(并发标记)
 主要用于服务端，低停顿（低stw）
 四大过程 p96,三个缺点 p97
 ```
@@ -402,11 +411,25 @@ GC Roots包括:
 
 ### 8.7.Garbage First(G1)
 
+>关键数据结构:
+>
+>1. RSet(Remember Set) : 替代前面垃圾回收器用来解决跨代引用的Card Table卡表的
+>
+>      ```
+>      RSet:每个Region都有一个RSet,它记录了其他Region中的对象到本Region的引用
+>      优点:使得垃圾回收器不需要扫描整个堆来找到谁引用了当前分区中的对象,只需要扫描RSet,没有别的引用指向当前Region,当前Region就是垃圾
+>      	配合STAB效率贼高,比增量更新对象变为灰色可能要重新扫描贼多对象效率更高
+>      缺点:耗费更多的内存,当新的引用诞生时要更新RSet(写屏障解决-->非内存屏障)
+>      ```
+>
+>
+
 p 98
 
 ```
 整体标记整理，Region之间标记复制 
 Region ； 优先级列表
+三色标记,STAB(并发标记);
 四大过程；
 低stw和高吞吐兼得，6G到8G内存以上的大内存机器G1比CMS表现更好
 缺点： 卡表多，内存占用大，20%的堆空间
@@ -418,6 +441,7 @@ p 105
 
 ```
 和G1相似的内存布局；
+STAB(并发标记);
 9大步骤；
 G1的筛选回收只能并行，Shenandoah可以并发回收（卡表->连接矩阵，对象头上多一个转发指针，CAS保证并发访问，读写屏障拦截）
 ```
@@ -432,7 +456,7 @@ p112
 
 ```
 Region动态大小，支持动态创建、销毁；
-染色指针;
+解决跨代引用:染色指针来代替G1的RSet,前面几个垃圾回收器的卡表;
 只能linux;
 虚拟内存到物理内存多重映射
 4大步骤
@@ -440,19 +464,25 @@ Region动态大小，支持动态创建、销毁；
 
 ### 8.10.常见垃圾回收器组合参数设定：(1.8)
 
->```
->* -XX:+UseSerialGC = Serial New (DefNew) + Serial Old
->  * 小型程序。默认情况下不会是这种选项，HotSpot会根据计算及配置和JDK版本自动选择收集器
->* -XX:+UseParNewGC = ParNew + SerialOld
->  * 这个组合已经很少用（在某些版本中已经废弃）
->  * https://stackoverflow.com/questions/34962257/why-remove-support-for-parnewserialold-anddefnewcms-in-the-future
->* -XX:+UseConc(urrent)MarkSweepGC = ParNew + CMS + Serial Old
->* -XX:+UseParallelGC = Parallel Scavenge + Parallel Old (1.8默认)
->* -XX:+UseG1GC = G1
->* Linux中没找到默认GC的查看方法，而windows中会打印UseParallelGC 
->  * java +XX:+PrintCommandLineFlags -version
->  * 通过GC的日志来分辨
->```
+-XX:+UseSerialGC = Serial New (DefNew) + Serial Old
+
+>小型程序。默认情况下不会是这种选项，HotSpot会根据计算及配置和JDK版本自动选择收集器
+
+-XX:+UseParNewGC = ParNew + SerialOld
+
+>这个组合已经很少用（在某些版本中已经废弃）[链接](https://stackoverflow.com/questions/34962257/why-remove-support-for-parnewserialold-anddefnewcms-in-the-future)
+
+-XX:+UseConc(urrent)MarkSweepGC = ParNew + CMS + Serial Old
+
+>CMS
+
+-XX:+UseParallelGC = Parallel Scavenge + Parallel Old (1.8默认)
+
+>JDK8的默认
+
+-XX:+UseG1GC = G1
+
+>G1
 
 ## 9.HotSpot(what is ?)
 
@@ -687,7 +717,7 @@ pc寄存器存储字节码指令地址作用:
 
 ![image-20210610201153860](README.assets/image-20210610201153860.png)
 
-### 13.3.栈帧的内部结构
+#### 13.3.栈帧的内部结构
 
 ![image-20210610221601228](README.assets/image-20210610221601228.png)
 
@@ -755,7 +785,7 @@ pc寄存器存储字节码指令地址作用:
 
 #### 13.3.6.invokedynamic指令
 
-invokedynamic对于动态语言的支持,让java有了动态语言的特性,主要体现lambda
+invokedynamic对于动态语言的支持,让java有了动态语言的特性,主要体现lambda,反射,Cglib,ASM
 
 ![image-20210611154955336](README.assets/image-20210611154955336.png)
 
@@ -842,14 +872,6 @@ IllegalAccessError：
    >3. 调用System.gc() 
    >4. Minor GC 导致survivor装不下,触发空间分配担保,但是失败了:<u>**老年代连续空间小于新生代对象总大小**</u>  或  <u>**老年代连续空间小于历次晋升的平均大小**</u>
 
-#### 13.5.4.GC日志查看
-
-[测试代码](src/main/java/com/jvm/gc/GcLog.java)
-
-![GC日志详解](README.assets/GC%E6%97%A5%E5%BF%97%E8%AF%A6%E8%A7%A3.png)
-
-![image-20210612205324033](README.assets/image-20210612205324033.png)
-
 #### 13.5.5.动态年龄判定
 
 >在HotSpot中,如果Survivor空间中相同年龄所有对象大小的总和大于一个Survivor空间的一半,年龄大于或等于该年龄的对象直接进入老年代,没有年龄限制
@@ -904,11 +926,11 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 >**hotspot**
 >
->JDK6 实现 : 永久代(Class信息+运行时常量池+字符串常量池+静态变量+即时编译的代码缓存) **(jvm虚拟内存**)
+>JDK6 实现 : 永久代(Class信息+运行时常量池+字符串常量池+静态变量+即时编译的代码缓存) **(jvm虚拟内存**,不会触发FGC不回收)
 >
->JDK7 实现 : 字符串常量池(**堆中**)  +  静态变量(**堆中**)    +  永久代(运行时常量池+Class信息+即时编译的代码缓存)(**还是jvm虚拟内存**)
+>JDK7 实现 : 字符串常量池(**堆中**)  +  静态变量(**堆中**)    +  永久代(运行时常量池+Class信息+即时编译的代码缓存)(**还是jvm虚拟内存**,不会触发FGC不回收)
 >
->JDK8 实现: 字符串常量池(**堆中**)  +  静态变量(**堆中**)  +  元空间(运行时常量池+Class信息+即时编译的代码缓存)(**本地内存**)
+>JDK8 实现: 字符串常量池(**堆中**)  +  静态变量(**堆中**)  +  元空间(运行时常量池+Class信息+即时编译的代码缓存)(**本地内存**,会触发FGC会回收)
 
 ```
 永久代为什么会被元空间代替?
@@ -1036,7 +1058,119 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 ## 16.调优实战
 
-### 16.1.hotspot参数分类
+### 16.1.什么是调优+两个目标
+
+- **什么是调优**:
+
+1. 根据需求进行JVM规划和预调优
+
+   ```
+   场景 :垂直电商，最高每日百万订单，处理订单系统需要什么样的服务器配置(或要求响应时间100ms)？
+   	答:  ①	1小时360000集中时间段,大约100个订单/秒，找一小时内的高峰期,大约1000订单/秒
+   		 ② 	一个订单前后产生的对象最多512k,1000个订单500M内存可以解决,所以在年轻代500M然后只要他YGC及时能回收,1.5G的机器可以解决
+   		 ③	当然这只是个估算,具体情况还得压测
+   ```
+
+   
+
+2. 优化运行JVM运行环境（慢，卡顿 , 频繁GC）
+
+   ```
+   1.场景: 有一个50万PV的资料类网站（从磁盘提取文档到内存）原服务器32位，1.5G的堆，用户反馈网站比较缓慢，因此公司决定升级，新的服务器为64位，16G的堆内存，结果用户反馈卡顿十分严重，反而比以前效率更低了
+   	答:
+          1. 为什么原网站慢?
+             很多用户浏览数据，很多数据load到内存，内存不足，频繁GC，STW长，响应时间变慢
+          2. 为什么会更卡顿？
+             内存越大，FGC时间越长
+          3. 咋办？
+             PS -> PN + CMS 或者 G1
+   
+   ```
+
+   ```
+   2. 场景:线程池运用不当(17.2章节)
+   ```
+
+   ```
+   3. 场景:如果有一个系统，内存一直消耗不超过10%，但是观察GC日志，发现FGC总是频繁产生，会是什么引起的？
+   
+    答:	有人在代码显式调用System.gc();
+   ```
+
+3. 解决JVM运行过程中出现的各种问题(OOM)
+
+   >1. tomcat http-header-size过大问题,导致OOM
+   >
+   >   ```properties
+   >   #默认4096字节 
+   >   server.max-http-header-size=10000000
+   >   ```
+   >
+   >   在线排查步骤:
+   >
+   >   - ```shell
+   >     #按内存占用大小从大到小排序
+   >     jmap -histo 75156 | less
+   >     ```
+   >
+   >   - 发现关于Http对象数量不多,但占用的内存很大
+   >
+   >   - 排查发现每来一个请求都创建一个Http11OutputBuffer,贼大
+   >
+   >   - 最后修改上面的http请求头的大小解决问题
+   >
+   >2. lambda表达式导致方法区溢出问题,[代码链接](src/main/java/com/jvm/exam/LambdaGC.java)
+   >
+   >   >每个lambda表达式的创建,都会有一个Class对象,class信息放在元空间,导致OOM
+   >
+   >3. 直接内存溢出问题（少见）
+   >
+   >   > 《深入理解Java虚拟机》P59，使用Unsafe分配直接内存，或者使用NIO的问题
+   >
+   >4. 栈溢出问题
+   >
+   >   > -Xss设定太小
+
+- **两个目标**:
+
+所谓调优，首先确定，追求啥？吞吐量优先，还是响应时间优先？还是在满足一定的响应时间的情况下，要求达到多大的吞吐量...
+
+1. 吞吐量：用户线程执行时间/(用户线程执行时间+垃圾回收线程)
+2. 响应时间：STW越短，响应时间越好
+
+>吞吐量优先：科学计算，吞吐量，数据挖掘（PS + PO）
+>
+>响应时间优先：网站 GUI API （parNew+CMS 或1.8 G1）
+
+### 16.2.调优步骤
+
+ 1. 熟悉业务场景（没有最好的垃圾回收器，只有最合适的垃圾回收器）
+     1. 响应时间、停顿时间 [CMS G1 ZGC] （需要给用户作响应）
+     2. 吞吐量 = 用户时间 /( 用户时间 + GC时间) [PS]
+
+  2. 选择回收器组合
+
+  3. 计算内存需求（经验值 1.5G 16G）
+
+  4. 选定CPU（越高越好）
+
+  5. 设定年代大小、升级年龄
+
+  6. 设定日志参数
+
+     1. 设参数
+
+        ```shell
+        # 5个日志文件,每个20m,5个都满了,再回去覆盖第一个,第二个,以此类推,循环
+        -Xloggc:/opt/xxx/lo gs/xxx-xxx-gc-%t.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=20M 
+        -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCCause
+        ```
+
+     2. 或者每天产生一个日志文件
+
+  7. 观察日志情况
+
+### 16.3.hotspot参数分类
 
 >标准： - 开头，所有的HotSpot都支持
 >
@@ -1044,7 +1178,7 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 >
 >不稳定：-XX 开头，下个版本可能取消
 
-#### 16.1.1.常用参数
+#### 16.3.1.常用参数
 
 * -Xmn -Xms -Xmx -Xss
 
@@ -1112,153 +1246,107 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 * 锁自旋次数 -XX:PreBlockSpin(CMS默认6,其他10)  ;热点代码检测参数-XX:CompileThreshold  ;逃逸分析-XX:+DoEscapeAnalysis  ;标量替换 -XX:+EliminateAllocations
   这些不建议设置
 
-#### 16.1.2.Parallel常用参数
+#### 16.3.2.Parallel常用参数
 
 * -XX:SurvivorRatio
 
   >Eden:Survivor=8:1
 
 * -XX:PreTenureSizeThreshold
-  
+
   > 大对象到底多大
-  
+
 * -XX:MaxTenuringThreshold>
 
   >对象年龄 15
 
 * -XX:+ParallelGCThreads
-  
+
   > 并行收集器的线程数，同样适用于CMS，一般设为和CPU核数相同
-  
+
 * -XX:+UseAdaptiveSizePolicy
-  
+
   > 自动选择各区大小比例
 
-#### 16.1.3.CMS常用参数
+#### 16.3.3.CMS常用参数
 
 * -XX:+UseConcMarkSweepGC
 
   >用CMS
 
 * -XX:ParallelCMSThreads
-  
+
   > CMS线程数量
-  
+
 * -XX:CMSInitiatingOccupancyFraction
-  
+
   > 使用多少比例的老年代后开始CMS收集，默认是68%(近似值)，如果频繁发生SerialOld卡顿，应该调小，（频繁CMS回收）
-  
+
 * -XX:+UseCMSCompactAtFullCollection
-  
+
   > 在FGC时进行整理
-  
+
 * -XX:CMSFullGCsBeforeCompaction
-  
+
   > 多少次FGC之后进行整理
-  
+
 * -XX:+CMSClassUnloadingEnabled
 
   >垃圾回收会清理永久代，移除不再使用的classes
 
 * -XX:CMSInitiatingPermOccupancyFraction
-  
+
   > 达到什么比例时进行Perm回收
-  
+
 * GCTimeRatio
-  
+
   > 设置GC时间占用程序运行时间的百分比
-  
+
 * -XX:MaxGCPauseMillis
-  
+
   > 停顿时间，是一个建议时间，GC会尝试用各种手段达到这个时间，比如减小年轻代
 
-#### 16.1.4.G1常用参数
+#### 16.3.4.G1常用参数
 
 * -XX:+UseG1GC
 
   >用G1
 
 * -XX:MaxGCPauseMillis
-  
+
   > 设置最大垃圾收集停顿时间
-  
+
 * -XX:GCPauseIntervalMillis
-  
+
   > GC的间隔时间
-  
+
 * -XX:+G1HeapRegionSize
-  
+
   > 分区大小，建议逐渐增大该值，1 2 4 8 16 32。
   > 随着size增加，垃圾的存活时间更长，GC间隔更长，但每次GC的时间也会更长
   > ZGC做了改进（动态区块大小）
-  
+
 * -XX:G1NewSizePercent
-  
+
   > 新生代最小比例，默认为5%
-  
+
 * -XX:G1MaxNewSizePercent
-  
+
   > 新生代最大比例，默认为60%
-  
+
 * -XX:GCTimeRatio
-  
+
   > GC时间建议比例，G1会根据这个值调整堆空间
-  
+
 * -XX:ConcGCThreads
-  
+
   > 线程数量
-  
+
 * -XX:InitiatingHeapOccupancyPercent
-  
+
   > 启动G1的堆空间占用比例
 
-### 16.2.Jvm调优追求的两个目标
-
-所谓调优，首先确定，追求啥？吞吐量优先，还是响应时间优先？还是在满足一定的响应时间的情况下，要求达到多大的吞吐量...
-
-1. 吞吐量：用户线程执行时间/(用户线程执行时间+垃圾回收线程)
-2. 响应时间：STW越短，响应时间越好
-
->吞吐量优先：科学计算，吞吐量，数据挖掘，thrput（PS + PO）
->
->响应时间优先：网站 GUI API （1.8 G1）
-
-### 16.3.调优步骤
-
- 1. 熟悉业务场景（没有最好的垃圾回收器，只有最合适的垃圾回收器）
-     1. 响应时间、停顿时间 [CMS G1 ZGC] （需要给用户作响应）
-     2. 吞吐量 = 用户时间 /( 用户时间 + GC时间) [PS]
-
-  2. 选择回收器组合
-
-  3. 计算内存需求（经验值 1.5G 16G）
-
-  4. 选定CPU（越高越好）
-
-  5. 设定年代大小、升级年龄
-
-  6. 设定日志参数
-
-     1. 设参数
-
-        ```shell
-        -Xloggc:/opt/xxx/logs/xxx-xxx-gc-%t.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=20M 
-        -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCCause
-        ```
-
-     2. 或者每天产生一个日志文件
-
-  7. 观察日志情况
-
 ### 16.4.面试场景题
-
-1. 有一个50万PV的资料类网站（从磁盘提取文档到内存）原服务器32位，1.5G的堆，用户反馈网站比较缓慢，因此公司决定升级，新的服务器为64位，16G的堆内存，结果用户反馈卡顿十分严重，反而比以前效率更低了
-      1. 为什么原网站慢?
-         很多用户浏览数据，很多数据load到内存，内存不足，频繁GC，STW长，响应时间变慢
-      2. 为什么会更卡顿？
-         内存越大，FGC时间越长
-      3. 咋办？
-         PS -> PN + CMS 或者 G1
 
 2. 系统CPU经常100%，如何调优？**(面试高频**)
 
@@ -1305,44 +1393,6 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
    >3：在线定位(一般小点儿公司用不到)
    >
    ><font color='red'>JvisualVM等图形界面分析工具不能直接连接线上系统（JMX协议），影响服务器的性能，一般只用作上线前的测试，在压测的时候观察堆内存变化</font>
-   
-4. 线程池运用不当(17.2章节)
-
-5. tomcat http-header-size过大问题,导致OOM
-
-      ```properties
-      #默认4096字节 
-      server.max-http-header-size=10000000
-      ```
-
-      在线排查步骤:
-
-      - ```shell
-        #按内存占用大小从大到小排序
-        jmap -histo 75156 | less
-        ```
-
-      - 发现关于Http对象数量不多,但占用的内存很大
-
-      - 排查发现每来一个请求都创建一个Http11OutputBuffer,贼大
-
-      - 最后修改上面的http请求头的大小解决问题
-
-6. lambda表达式导致方法区溢出问题,[代码链接](src/main/java/com/jvm/exam/LambdaGC.java)
-
-      >每个lambda表达式的创建,都会有一个Class对象,class信息放在元空间,导致OOM
-
-7. 直接内存溢出问题（少见）
-
-      > 《深入理解Java虚拟机》P59，使用Unsafe分配直接内存，或者使用NIO的问题
-
-8. 栈溢出问题
-
-   > -Xss设定太小
-
-9. 如果有一个系统，内存一直消耗不超过10%，但是观察GC日志，发现FGC总是频繁产生，会是什么引起的？
-
-   > 有人在代码显式调用System.gc();
 
 ## 17.真实项目调优分析问题解决步骤
 
@@ -1596,4 +1646,101 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 >   [Eden: 0.0B(1024.0K)->0.0B(1024.0K) Survivors: 0.0B->0.0B Heap: 18.8M(20.0M)->18.8M(20.0M)], [Metaspace: 38
 >76K->3876K(1056768K)] [Times: user=0.07 sys=0.00, real=0.07 secs]
 >```
+
+## 21.PS.日志分析
+
+[测试代码](src/main/java/com/jvm/gc/GcLog.java)
+
+![image-20210612205324033](README.assets/image-20210612205324033.png)
+
+- 上面GC部分
+
+![GC日志详解](README.assets/GC%E6%97%A5%E5%BF%97%E8%AF%A6%E8%A7%A3.png)
+
+- 下面heap dump部分：
+
+
+![GCHeapDump](README.assets/GCHeapDump.png)
+
+```
+eden space 5632K, 94% used [0x00000000ff980000,0x00000000ffeb3e28,0x00000000fff00000)
+                               起始地址           使用空间结束地址    整体空间结束地址
+```
+
+##  22.面试必会
+
+1. -XX:MaxTenuringThreshold控制的是什么？
+   √ A: 对象升入老年代的年龄
+      B: 老年代触发FGC时的内存垃圾比例
+
+2. 生产环境中，倾向于将最大堆内存和最小堆内存设置为：（为什么？）
+   √ A: 相同 B：不同
+
+3. JDK1.8默认的垃圾回收器是：
+         A: ParNew + CMS
+     	B: G1
+      √ C: PS + ParallelOld
+     	D: 以上都不是
+
+4. 什么是响应时间优先？
+
+5. 什么是吞吐量优先？
+
+6. ParNew和PS的区别是什么？
+
+   >两者都是复制算法，都是并行处理，但是不同的是，parallel scavenge 可以设置最大gc停顿时间（-XX:MaxGCPauseMills）以及gc时间占比(-XX:GCTimeRatio)
+
+7. ParNew和ParallelOld的区别是什么？（年代不同，算法不同）
+
+8. 长时间计算的场景应该选择：A：停顿时间   √ B: 吞吐量
+
+9. 大规模电商网站应该选择：√ A：停顿时间 B: 吞吐量
+
+10. HotSpot的垃圾收集器最常用有哪些？
+
+11. 常见的HotSpot垃圾收集器组合有哪些？
+
+    >8.10章节
+
+12. JDK1.7 1.8 1.9的默认垃圾回收器是什么？如何查看？
+
+      >java -XX:+PrintCommandLineFlags -version
+      >
+      >1.7和1.8是PS+PO
+      >
+      >1.9 G1
+
+13. 所谓调优，到底是在调什么？
+
+      >章节 16.1
+
+14. 如果采用PS + ParrallelOld组合，怎么做才能让系统基本不产生FGC
+
+15. 如果采用ParNew + CMS组合，怎样做才能够让系统基本不产生FGC
+
+       1.加大JVM内存
+
+       2.加大Young的比例
+
+       3.提高Y-O的年龄
+
+       4.提高S区比例
+
+       5.避免代码内存泄漏
+
+16. G1是否分代？G1垃圾回收器会产生FGC吗？
+
+      >逻辑分代,物理不分代,会产生FGC
+
+17. 如果G1产生FGC，你应该做什么？
+
+          1. 扩内存
+          2. 提高CPU性能（回收的快，业务逻辑产生对象的速度固定，垃圾回收越快，内存空间越大）
+          3. 降低MixedGC(和CMS过程几乎一样)触发的阈值，让MixedGC提早发生（默认是45%）
+
+ 18. 问：生产环境中能够随随便便的dump吗？
+      小堆影响不大，大堆会有服务暂停或卡顿（加live可以缓解），dump前会有FGC
+
+ 19. 问：常见的OOM问题有哪些？
+      栈 堆 MethodArea 直接内存
 
