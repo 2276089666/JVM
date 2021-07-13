@@ -837,11 +837,20 @@ IllegalAccessError：
 #### 13.5.1各类OOM
 
 1. [堆空间OOM](src/main/java/com/jvm/oom/TestHeapOOM.java)
+
 2. [栈空间OOM](src/main/java/com/jvm/oom/TestStackOutOfMemory.java)
+
 3. [栈溢出](src/main/java/com/jvm/oom/TestStackOverflowError.java)
+
 4. [字符串常量池OOM](src/main/java/com/jvm/oom/StringConstantPoolOOM.java)
+
 5. [元空间OOM](src/main/java/com/jvm/oom/MetaspaceOOM.java)
+
 6. [直接内存OOM](src/main/java/com/jvm/oom/DirectMemoryOOM.java)
+
+   **切记某个controller的业务线程导致OOM,其他controller的业务线程还可以使用**
+
+   **原因: 造成OOM的线程会被销毁,GC会把该线程所占有的资源回收,以供正常的线程使用**
 
 #### 13.5.2.堆的分代比例设置
 
