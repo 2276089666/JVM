@@ -164,13 +164,13 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 > StoreStore屏障：
 >
 > 	对于这样的语句Store1; StoreStore; Store2，
-> 						
+> 							
 > 	在Store2及后续写入操作执行前，保证Store1的写入操作对其它处理器可见。
 >
 > LoadStore屏障：
 >
 > 	对于这样的语句Load1; LoadStore; Store2，
-> 						
+> 							
 > 	在Store2及后续写入操作被刷出前，保证Load1要读取的数据被读取完毕。
 >
 > StoreLoad屏障：
@@ -1366,19 +1366,27 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
    >       top -Hp  pid
    >       ```
    >
-   >    3. 导出该线程的堆栈 
+   >    3. 找出大量占用CPU的线程的pid,并转为16进制
    >
    >       ```shell
-   >       jstack
+   >       printf '%x' pid
    >       ```
    >
-   >    4. 查找哪个方法（栈帧）消耗时间 
+   >       记住对应pid的16进制值 : 6a4
+   >
+   >    4. 导出该线程的堆栈 
    >
    >       ```shell
-   >       jstack
+   >       jstack pid > stack.txt
    >       ```
    >
-   >    5. 工作线程占比高 | 垃圾回收线程占比高
+   >    5. vim进入stack.txt,查找哪个类消耗大量CPU,并找到出问题代码的行数 
+   >
+   >       ```shell
+   >        /6a4
+   >       ```
+   >
+   >    6. 进入对应的类的源代码排除问题
 
 3. 系统内存飙高，如何查找问题？（**面试高频**）
 
