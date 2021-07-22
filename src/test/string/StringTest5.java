@@ -41,7 +41,7 @@ public class StringTest5 {
         System.out.println(s5 == s7);//false
         System.out.println(s6 == s7);//false
         //intern():判断字符串常量池中是否存在javaEEhadoop值，如果存在，则返回常量池中javaEEhadoop的地址；
-        //如果字符串常量池中不存在javaEEhadoop，则在常量池中加载一份javaEEhadoop，并返回次对象的地址。
+        //如果字符串常量池中不存在javaEEhadoop，则在常量池中加载一份javaEEhadoop，并返回此对象的地址引用。
         String s8 = s6.intern();
         System.out.println(s3 == s8);//true
     }

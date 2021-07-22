@@ -1,7 +1,7 @@
 package com.jvm.string;
 
 
-public class StringExer {
+public class StringExam {
     String str = new String("good");
     char[] ch = {'t', 'e', 's', 't'};
 
@@ -11,7 +11,7 @@ public class StringExer {
     }
 
     public static void main(String[] args) {
-        StringExer ex = new StringExer();
+        StringExam ex = new StringExam();
         ex.change(ex.str, ex.ch);
         System.out.println(ex.str);//good
         System.out.println(ex.ch);//best

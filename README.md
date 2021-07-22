@@ -148,29 +148,30 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 
 >1.内存屏障 X86
 >
->sfence:  store| 在sfence指令前的写操作当必须在sfence指令后的写操作前完成。
->lfence：load | 在lfence指令前的读操作当必须在lfence指令后的读操作前完成。
->mfence：modify/mix | 在mfence指令前的读写操作当必须在mfence指令后的读写操作前完成。
+>sfence:  (storefence) 在sfence指令前的写操作当必须在sfence指令后的写操作前完成。
+>lfence：(loadfence) 在lfence指令前的读操作当必须在lfence指令后的读操作前完成。
+>mfence：(modify/mixfence) 在mfence指令前的读写操作当必须在mfence指令后的读写操作前完成。
 >
 >2.原子指令,lock等操作
 
 - JVM级别如何规范（JSR133）
 
 > LoadLoad屏障：
-> 	对于这样的语句Load1; LoadLoad; Load2， 
 >
+> 	对于这样的语句Load1; LoadLoad; Load2，
+> 		
 > 	在Load2及后续读取操作要读取的数据被访问前，保证Load1要读取的数据被读取完毕。
 >
 > StoreStore屏障：
 >
 > 	对于这样的语句Store1; StoreStore; Store2，
-> 							
+> 		
 > 	在Store2及后续写入操作执行前，保证Store1的写入操作对其它处理器可见。
 >
 > LoadStore屏障：
 >
 > 	对于这样的语句Load1; LoadStore; Store2，
-> 							
+> 		
 > 	在Store2及后续写入操作被刷出前，保证Load1要读取的数据被读取完毕。
 >
 > StoreLoad屏障：
@@ -249,7 +250,7 @@ P48
 
    ![image-20210606134921811](README.assets/image-20210606134921811.png)
 
-**数组对象**(new int[]{} 16字节)
+**数组对象**(new Long[5]    8(markword)+4(classPointer)+4(length)+4*5+4(padding)=40 字节)
 
 比普通对象多一个数组的长度length 4字节
 
@@ -474,7 +475,7 @@ Region动态大小，支持动态创建、销毁；
 
 >这个组合已经很少用（在某些版本中已经废弃）[链接](https://stackoverflow.com/questions/34962257/why-remove-support-for-parnewserialold-anddefnewcms-in-the-future)
 
--XX:+UseConc(urrent)MarkSweepGC = ParNew + CMS + Serial Old
+-XX:+UseConcMarkSweepGC = ParNew + CMS + Serial Old
 
 >CMS
 
@@ -848,7 +849,7 @@ IllegalAccessError：
 
 6. [直接内存OOM](src/main/java/com/jvm/oom/DirectMemoryOOM.java)
 
-   **切记某个controller的业务线程导致OOM,其他controller的业务线程还可以使用**
+   切记某个controller的业务线程导致OOM,**后续没有其他线程再大量申请内存造成OOM的可能的情况下**,其他controller的业务线程还可以使用
 
    **原因: 造成OOM的线程会被销毁,GC会把该线程所占有的资源回收,以供正常的线程使用**
 
@@ -937,11 +938,11 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
 >**hotspot**
 >
->JDK6 实现 : 永久代(Class信息+运行时常量池+字符串常量池+静态变量+即时编译的代码缓存) **(jvm虚拟内存**,不会触发FGC不回收)
+>JDK6 实现 : 永久代(Class信息+运行时常量池+字符串常量池+静态变量+即时编译的代码缓存) **(jvm虚拟内存**,不会触发FGC,不会被回收)
 >
->JDK7 实现 : 字符串常量池(**堆中**)  +  静态变量(**堆中**)    +  永久代(运行时常量池+Class信息+即时编译的代码缓存)(**还是jvm虚拟内存**,不会触发FGC不回收)
+>JDK7 实现 : 字符串常量池(**堆中**)  +  静态变量(**堆中**)    +  永久代(运行时常量池+Class信息+即时编译的代码缓存)(**还是jvm虚拟内存**,不会触发FGC,不会被回收)
 >
->JDK8 实现: 字符串常量池(**堆中**)  +  静态变量(**堆中**)  +  元空间(运行时常量池+Class信息+即时编译的代码缓存)(**本地内存**,会触发FGC会回收)
+>JDK8 实现: 字符串常量池(**堆中**)  +  静态变量(**堆中**)  +  元空间(运行时常量池+Class信息+即时编译的代码缓存)(**本地内存**,会触发FGC,会被回收)
 
 ```
 永久代为什么会被元空间代替?
@@ -1049,7 +1050,7 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 如果字符串常量池中已经包含一个等于此String对象的字符串，则返回代表池中这个字符串的String对象的引用（堆中对象的地址）；否则，会将此String对象包含的字符串添加到常量池中，并且返回此String对象的引用。（还是堆中）
 ```
 
->![image-20210616170553296](README.assets/image-20210616170553296.png)
+>![image-20210722153739157](README.assets/image-20210722153739157.png)
 >
 >  [测试代码](src/main/java/com/jvm/string/StringTest6.java)
 
@@ -1112,23 +1113,23 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
 
    >1. tomcat http-header-size过大问题,导致OOM
    >
-   >   ```properties
-   >   #默认4096字节 
-   >   server.max-http-header-size=10000000
-   >   ```
+   >  ```properties
+   >  #默认4096字节 
+   >  server.max-http-header-size=10000000
+   >  ```
    >
-   >   在线排查步骤:
+   >  在线排查步骤:
    >
-   >   - ```shell
-   >     #按内存占用大小从大到小排序
-   >     jmap -histo 75156 | less
-   >     ```
+   >  - ```shell
+   >    #按内存占用大小从大到小排序
+   >    jmap -histo 75156 | less
+   >    ```
    >
-   >   - 发现关于Http对象数量不多,但占用的内存很大
+   >  - 发现关于Http对象数量不多,但占用的内存很大
    >
-   >   - 排查发现每来一个请求都创建一个Http11OutputBuffer,贼大
+   >  - 排查发现每来一个请求都创建一个Http11OutputBuffer,贼大
    >
-   >   - 最后修改上面的http请求头的大小解决问题
+   >  - 最后修改上面的http请求头的大小解决问题
    >
    >2. lambda表达式导致方法区溢出问题,[代码链接](src/main/java/com/jvm/exam/LambdaGC.java)
    >
@@ -1136,11 +1137,14 @@ JVM **规范** : 方法区包括:(**Class信息,常量池,静态变量,即时编
    >
    >3. 直接内存溢出问题（少见）
    >
-   >   > 《深入理解Java虚拟机》P59，使用Unsafe分配直接内存，或者使用NIO的问题
+   >   >《深入理解Java虚拟机》P59，使用Unsafe分配直接内存，或者使用NIO的问题
    >
    >4. 栈溢出问题
    >
-   >   > -Xss设定太小
+   >   >-Xss设定太小
+   >
+   >5. .tank的子弹出界,没有回收导致OOM
+   >
 
 - **两个目标**:
 
