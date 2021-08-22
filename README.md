@@ -159,19 +159,19 @@ cafe babe 0000 0034 0016 0a00 0400 1209
 > LoadLoad屏障：
 >
 > 	对于这样的语句Load1; LoadLoad; Load2，
-> 			
+> 				
 > 	在Load2及后续读取操作要读取的数据被访问前，保证Load1要读取的数据被读取完毕。
 >
 > StoreStore屏障：
 >
 > 	对于这样的语句Store1; StoreStore; Store2，
-> 			
+> 				
 > 	在Store2及后续写入操作执行前，保证Store1的写入操作对其它处理器可见。
 >
 > LoadStore屏障：
 >
 > 	对于这样的语句Load1; LoadStore; Store2，
-> 			
+> 				
 > 	在Store2及后续写入操作被刷出前，保证Load1要读取的数据被读取完毕。
 >
 > StoreLoad屏障：
